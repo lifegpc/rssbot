@@ -13,17 +13,26 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-class settings:
-    def __init__(self, fn: str=None):
-        if fn is not None:
-            self.parse(fn)
-    
-    def parse(self, fn: str):
-        d = {}
-        with open(fn, 'r', encoding='utf8') as f:
-            t = f.read()
-            for i in t.splitlines(False):
-                l = i.split('=', 2)
-                if len(l) == 2:
-                    d[l[0]] = l[1]
-        self._token = d['token'] if 'token' in d else None
+from hashlib import sha256 as sha256a, md5 as md5a
+from base64 import b64encode
+
+
+def sha256(s) -> str:
+    a = sha256a()
+    a.update(str(s).encode())
+    return a.hexdigest()
+
+def md5(s) -> str:
+    a = md5a()
+    a.update(str(s).encode())
+    return a.hexdigest()
+
+def sha256WithBase64(s) -> str:
+    a = sha256a()
+    a.update(str(s).encode())
+    return b64encode(a.digest()).decode()
+
+def md5WithBase64(s) -> str:
+    a = md5a()
+    a.update(str(s).encode())
+    return b64encode(a.digest()).decode()
