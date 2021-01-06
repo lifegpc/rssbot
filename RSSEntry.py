@@ -14,6 +14,18 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from json import loads
+from config import RSSConfig
+
+
+class ChatEntry:
+    def __init__(self, data=None):
+        self.chatId = data[0] if data is not None and data[0] is not None else None
+        self.id = data[1] if data is not None and data[1] is not None else None
+        try:
+            self.config = RSSConfig(
+                loads(data[2])) if data is not None and data[2] is not None else RSSConfig()
+        except:
+            self.config = RSSConfig()
 
 
 class RSSEntry:
@@ -30,12 +42,7 @@ class RSSEntry:
         self.lastupdatetime = None
         if data is not None and data[3] is not None:
             self.interval = data[3]
-        self.config = None
-        if data is not None and data[4] is not None:
-            try:
-                self.config = loads(data[4])
-            except:
-                pass
         self.id = None
-        if data is not None and data[5] is not None:
-            self.id = data[5]
+        if data is not None and data[4] is not None:
+            self.id = data[4]
+        self.chatList = []

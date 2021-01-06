@@ -27,6 +27,7 @@ from enum import Enum
 from rsstempdict import rssMetaInfo, rssMetaList
 from random import randrange
 from textc import textc
+from re import search, I
 
 
 def getMediaInfo(m: dict, config: RSSConfig = RSSConfig()) -> str:
@@ -45,6 +46,10 @@ def getMediaInfo(m: dict, config: RSSConfig = RSSConfig()) -> str:
         s = f"""{s}\n群/频道ID：{m['chatId']}"""
     elif 'userId' in m and m['userId'] is not None:
         s = f"""{s}\n<a href="tg://user?id={m['userId']}">订阅的账号</a>"""
+    s = f"{s}\n设置："
+    s = f"{s}\n禁用预览：{config.disable_web_page_preview}"
+    s = f"{s}\n显示RSS标题：{config.show_RSS_title}"
+    s = f"{s}\n显示内容标题：{config.show_Content_title}"
     return s
 
 
@@ -53,6 +58,11 @@ class InlineKeyBoardCallBack(Enum):
     SendPriview = 1
     ModifyChatId = 2
     BackUserId = 3
+    SettingsPage = 4
+    BackToNormalPage = 5
+    DisableWebPagePreview = 6
+    ShowRSSTitle = 7
+    ShowContentTitle = 8
 
 
 def getInlineKeyBoardWhenRSS(hashd: str, m: dict) -> str:
@@ -69,8 +79,6 @@ def getInlineKeyBoardWhenRSS(hashd: str, m: dict) -> str:
         d[i].append(
             {'text': '修改群组/频道ID', 'callback_data': f'0,{hashd},{InlineKeyBoardCallBack.ModifyChatId.value}'})
         if 'userId' in m and m['userId'] is not None:
-            d.append([])
-            i = i + 1
             d[i].append(
                 {'text': '发送至私聊', 'callback_data': f'0,{hashd},{InlineKeyBoardCallBack.BackUserId.value}'})
     elif 'userId' in m and m['userId'] is not None:
@@ -78,6 +86,30 @@ def getInlineKeyBoardWhenRSS(hashd: str, m: dict) -> str:
         i = i + 1
         d[i].append(
             {'text': '发送至群组/频道', 'callback_data': f'0,{hashd},{InlineKeyBoardCallBack.ModifyChatId.value}'})
+    d.append([])
+    i = i + 1
+    d[i].append(
+        {'text': '设置', 'callback_data': f'0,{hashd},{InlineKeyBoardCallBack.SettingsPage.value}'})
+    return {'inline_keyboard': d}
+
+
+def getInlineKeyBoardWhenRSS2(hashd: str, config: RSSConfig) -> str:
+    d = []
+    i = 0
+    temp = '启用预览' if config.disable_web_page_preview else '禁用预览'
+    d.append([])
+    d[i].append(
+        {'text': temp, 'callback_data': f'0,{hashd},{InlineKeyBoardCallBack.DisableWebPagePreview.value}'})
+    temp = '隐藏RSS标题' if config.show_RSS_title else '显示RSS标题'
+    d[i].append(
+        {'text': temp, 'callback_data': f'0,{hashd},{InlineKeyBoardCallBack.ShowRSSTitle.value}'})
+    d.append([])
+    i = i + 1
+    temp = '隐藏内容标题' if config.show_Content_title else '显示内容标题'
+    d[i].append(
+        {'text': temp, 'callback_data': f'0,{hashd},{InlineKeyBoardCallBack.ShowContentTitle.value}'})
+    d[i].append(
+        {'text': '返回', 'callback_data': f'0,{hashd},{InlineKeyBoardCallBack.BackToNormalPage.value}'})
     return {'inline_keyboard': d}
 
 
@@ -108,11 +140,14 @@ class main:
         if config.show_RSS_title:
             text.addtotext(f"<b>{escape(meta['title'])}</b>")
         if config.show_Content_title and 'title' in content and content['title'] is not None and content['title'] != '':
-            if 'link' in content:
+            if 'link' in content and content['link'] is not None and content['link'] != '':
                 text.addtotext(
                     f"""<b><a href="{content['link']}">{escape(content['title'])}</a></b>""")
             else:
                 text.addtotext(f"<b>{escape(content['title'])}</b>")
+        elif 'link' in content and content['link'] is not None and content['link'] != '':
+            text.addtotext(
+                f"""<a href="{content['link']}">{escape(content['link'])}</a>""")
         if 'description' in content and content['description'] is not None and content['description'] != '':
             text.addtotext(content['description'])
 
@@ -193,9 +228,11 @@ class main:
             return -1
         self._r = Session()
         self._me = self._request('getMe')
+        self._rssMetaList = rssMetaList()
         print(self._me)
-        if self._me is None:
+        if self._me is None or 'ok' not in self._me or not self._me['ok']:
             print('无法读取机器人信息')
+        self._me = self._me['result']
         self._upi = None
         self._updateThread = updateThread(self)
         self._updateThread.start()
@@ -244,10 +281,11 @@ class messageHandle(Thread):
 
     def _getCommandlinePara(self) -> List[str]:
         s = self._data['text']
-        for i in self._data['entities']:
-            if i['type'] == 'bot_command':
-                s = s[:i['offset']] + s[i['offset']+i['length']:]
-                break
+        if 'entities' in self._data:
+            for i in self._data['entities']:
+                if i['type'] == 'bot_command':
+                    s = s[:i['offset']] + s[i['offset']+i['length']:]
+                    break
         l = s.split(' ')
         r = []
         t = ''
@@ -277,6 +315,9 @@ class messageHandle(Thread):
 
     def run(self):
         print(self._data)
+        for key in ["new_chat_members", "left_chat_member", "new_chat_title", "new_chat_photo", "delete_chat_photo", "pinned_message"]:
+            if key in self._data:
+                return
         self._messageId = self._data['message_id']
         self._chatId = self.__getChatId()
         if self._chatId is None:
@@ -286,10 +327,138 @@ class messageHandle(Thread):
         if 'text' in self._data:
             if 'entities' in self._data:
                 self._botCommand = self.__getBotCommand()
+        self._fromUserId = self.__getFromUserId()
+        if self._fromUserId is not None:
+            di = {'chat_id': self._chatId}
+            if self.__getChatType() in ['supergroup', 'group'] and self._fromUserId is not None:
+                di['reply_to_message_id'] = self._messageId
+            self._userStatus, self._hashd = self._main._db.getUserStatus(
+                self._fromUserId)
+            if self._userStatus == userStatus.normalStatus:
+                pass
+            elif self._botCommand is not None and self._botCommand == '/cancle':
+                if self._userStatus == userStatus.needInputChatId:
+                    di['text'] = '已取消输入群/频道ID。'
+                self._main._db.setUserStatus(
+                    self._fromUserId, userStatus.normalStatus)
+                self._main._request('sendMessage', 'post', json=di)
+                return
+            elif self._userStatus in [userStatus.needInputChatId]:
+                metainfo = self._main._rssMetaList.getRSSMeta(self._hashd)
+                if metainfo is None:
+                    self._main._db.setUserStatus(
+                        self._fromUserId, userStatus.normalStatus)
+                    di['text'] = '已过期。'
+                    self._main._request('sendMessage', 'post', json=di)
+                    return
+                elif self._userStatus == userStatus.needInputChatId:
+                    para = self._getCommandlinePara()
+                    chatId = None
+                    for i in para:
+                        if search(r'^[\+-]?[0-9]+$', i) is not None:
+                            chatId = int(i)
+                            break
+                    if chatId is None:
+                        di['text'] = '找不到ID。'
+                        self._main._request('sendMessage', 'post', json=di)
+                        return
+                    di['text'] = '正在获取群/频道信息……'
+                    re = self._main._request('sendMessage', 'post', json=di)
+                    if re is not None and 'ok' in re and re['ok']:
+                        re = re['result']
+                        di = {'chat_id': self._chatId,
+                              'message_id': re['message_id']}
+                        re2 = self._main._request(
+                            'getChat', 'post', {'chat_id': chatId})
+                        if re2 is not None and 'ok' in re2 and re2['ok']:
+                            re2 = re2['result']
+                            if re2['type'] == "private":
+                                di['text'] = '该ID是私聊。'
+                                self._main._request(
+                                    'editMessageText', 'post', json=di)
+                                return
+                            di['text'] = '正在获取群/频道管理员列表……'
+                            self._main._request(
+                                'editMessageText', 'post', json=di)
+                            re3 = self._main._request(
+                                'getChatAdministrators', 'post', {'chat_id': chatId})
+                            if re3 is not None and 'ok' in re3 and re3['ok']:
+                                re3 = re3['result']
+                                chatM = None
+                                for chatMember in re3:
+                                    if chatMember['user']['id'] != self._fromUserId:
+                                        continue
+                                    if chatMember['status'] not in ['creator', 'administrator']:
+                                        continue
+                                    if re2['type'] == 'channel' and ('can_post_messages' not in chatMember or not chatMember['can_post_messages']):
+                                        continue
+                                    if re2['type'] == 'channel' and ('can_edit_messages' not in chatMember or not chatMember['can_edit_messages']):
+                                        continue
+                                    chatM = chatMember
+                                if chatM is None:
+                                    di['text'] = '你没有权限操作。'
+                                    self._main._request(
+                                        'editMessageText', 'post', json=di)
+                                    return
+                                di['text'] = '正在确认机器人的权限……'
+                                self._main._request(
+                                    'editMessageText', 'post', json=di)
+                                re4 = self._main._request("getChatMember", "post", {
+                                                          "chat_id": chatId, "user_id": self._main._me['id']})
+                                if re4 is not None and 'ok' in re4 and re4['ok']:
+                                    re4 = re4['result']
+                                    if re2['type'] == 'channel' and (re4['status'] not in ['creator', 'administrator'] or not re4['can_post_messages'] or not re4['can_edit_messages']):
+                                        di['text'] = '机器人在频道内缺少必要的权限'
+                                        self._main._request(
+                                            'editMessageText', 'post', json=di)
+                                        return
+                                    if re2['type'] in ["group", "supergroup"]:
+                                        if re4['status'] in ['creator', 'administrator']:
+                                            pass
+                                        elif 'permissions' in re2 and re2['permissions'] is not None and (not re2['permissions']['can_send_messages'] or not re2['permissions']['can_send_media_messages'] or not re2['permissions']['can_send_other_messages'] or not re2['permissions']['can_add_web_page_previews']):
+                                            di['text'] = '机器人在群组内缺少必要的权限'
+                                            self._main._request(
+                                                'editMessageText', 'post', json=di)
+                                            return
+                                        elif re4['status'] in ['left', 'kicked']:
+                                            di['text'] = '机器人不在群组内' if re4['status'] == 'lefy' else '机器人已被踢'
+                                            self._main._request(
+                                                'editMessageText', 'post', json=di)
+                                            return
+                                        elif re4['status'] == 'restricted' and (not re4['can_send_messages'] or not re4['can_send_media_messages'] or not re4['can_send_other_messages'] or not re4['can_add_web_page_previews']):
+                                            di['text'] = '机器人在群组内缺少必要的权限'
+                                            self._main._request(
+                                                'editMessageText', 'post', json=di)
+                                            return
+                                else:
+                                    di['text'] = '获取机器人权限失败！'
+                                    self._main._request(
+                                        'editMessageText', 'post', json=di)
+                                    return
+                        else:
+                            di['text'] = '获取群/频道信息失败！'
+                            self._main._request(
+                                'editMessageText', 'post', json=di)
+                            return
+                        metainfo.meta['chatId'] = chatId
+                        metainfo.flushTime()
+                        di['text'] = '修改完成！'
+                        self._main._request('editMessageText', 'post', json=di)
+                        di = {'chat_id': metainfo.chatId,
+                              'message_id': metainfo.messageId}
+                        di['text'] = getMediaInfo(
+                            metainfo.meta, metainfo.config)
+                        di['parse_mode'] = 'HTML'
+                        di['disable_web_page_preview'] = True
+                        di['reply_markup'] = getInlineKeyBoardWhenRSS(
+                            self._hashd, metainfo.meta)
+                        self._main._request('editMessageText', 'post', json=di)
+                        self._main._db.setUserStatus(
+                            self._fromUserId, userStatus.normalStatus)
+                    return
         if self._botCommand is None or self._botCommand not in ['/help', '/rss']:
             self._botCommand = '/help'
         di = {'chat_id': self._chatId}
-        self._fromUserId = self.__getFromUserId()
         if self.__getChatType() in ['supergroup', 'group'] and self._fromUserId is not None:
             di['reply_to_message_id'] = self._messageId
         if self._botCommand == '/help':
@@ -336,7 +505,7 @@ class messageHandle(Thread):
                 di['reply_markup'] = getInlineKeyBoardWhenRSS(
                     self._hash, media)
                 self._main._rssMetaList.addRSSMeta(rssMetaInfo(
-                    re['message_id'], media, p.itemList, self._hash))
+                    re['message_id'], chatId, media, p.itemList, self._hash))
             self._main._request('editMessageText', 'post', json=di)
 
 
@@ -346,7 +515,7 @@ class callbackQueryHandle(Thread):
         self._main = main
         self._data = data
 
-    def answer(self, text: str):
+    def answer(self, text: str = ''):
         di = {}
         di['callback_query_id'] = self._callbackQueryId
         di['text'] = text
@@ -376,12 +545,31 @@ class callbackQueryHandle(Thread):
             if self._rssMeta is None:
                 self.answer('找不到数据。可能已经超时。')
                 return
+            self._rssMeta.flushTime()
             self._userId = None
             if 'userId' in self._rssMeta.meta and self._rssMeta.meta['userId'] is not None:
                 self._userId = self._rssMeta.meta['userId']
             if self._userId is not None and self._data['from']['id'] != self._userId:
                 self.answer('你没有权限操作。')
-            if self._inlineKeyBoardCommand == InlineKeyBoardCallBack.SendPriview:
+            if self._inlineKeyBoardCommand == InlineKeyBoardCallBack.Subscribe:
+                title = self._rssMeta.meta['title']
+                url = self._rssMeta.meta['url']
+                chatId = None
+                if 'chatId' in self._rssMeta.meta and self._rssMeta.meta['chatId'] is not None:
+                    chatId = self._rssMeta.meta['chatId']
+                elif self._userId is not None:
+                    chatId = self._userId
+                if chatId is None:
+                    self.answer('缺少发送的位置')
+                    return
+                config = self._rssMeta.config
+                ttl = self._rssMeta.meta['ttl'] if 'ttl' in self._rssMeta.meta else None
+                suc = self._main._db.addRSSList(title, url, chatId, config, ttl)
+                if suc:
+                    self.answer('订阅成功！')
+                else:
+                    self.answer('订阅失败！')
+            elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.SendPriview:
                 chatId = None
                 if 'chatId' in self._rssMeta.meta and self._rssMeta.meta['chatId'] is not None:
                     chatId = self._rssMeta.meta['chatId']
@@ -402,14 +590,92 @@ class callbackQueryHandle(Thread):
                     self.answer(f'第{ran}条发送失败！')
                 return
             elif self._userId is not None and self._inlineKeyBoardCommand == InlineKeyBoardCallBack.ModifyChatId:
-                self._main._db.setUserStatus(self._userId, userStatus.needInputChatId, self._hashd)
+                self._main._db.setUserStatus(
+                    self._userId, userStatus.needInputChatId, self._hashd)
                 di = {}
                 if 'message' in self._data and self._data['message'] is not None:
                     di['chat_id'] = self._data['message']['chat']['id']
                 else:
                     di['chat_id'] = self._data['from']['id']
-                di["text"] = "请输入群/频道的ID"
+                di["text"] = "请输入群/频道的ID（使用 /cancle 可以取消）："
                 self._main._request("sendMessage", "post", json=di)
+                self.answer()
+                return
+            elif self._userId is not None and self._inlineKeyBoardCommand == InlineKeyBoardCallBack.BackUserId:
+                self._rssMeta.meta['chatId'] = None
+                di = {'chat_id': self._rssMeta.chatId,
+                      'message_id': self._rssMeta.messageId}
+                di['text'] = getMediaInfo(
+                    self._rssMeta.meta, self._rssMeta.config)
+                di['parse_mode'] = 'HTML'
+                di['disable_web_page_preview'] = True
+                di['reply_markup'] = getInlineKeyBoardWhenRSS(
+                    self._hashd, self._rssMeta.meta)
+                self._main._request("editMessageText", "post", json=di)
+                self.answer()
+                return
+            elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.SettingsPage:
+                di = {'chat_id': self._rssMeta.chatId,
+                      'message_id': self._rssMeta.messageId}
+                di['text'] = getMediaInfo(
+                    self._rssMeta.meta, self._rssMeta.config)
+                di['parse_mode'] = 'HTML'
+                di['disable_web_page_preview'] = True
+                di['reply_markup'] = getInlineKeyBoardWhenRSS2(
+                    self._hashd, self._rssMeta.config)
+                self._main._request("editMessageText", "post", json=di)
+                self.answer()
+                return
+            elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.BackToNormalPage:
+                di = {'chat_id': self._rssMeta.chatId,
+                      'message_id': self._rssMeta.messageId}
+                di['text'] = getMediaInfo(
+                    self._rssMeta.meta, self._rssMeta.config)
+                di['parse_mode'] = 'HTML'
+                di['disable_web_page_preview'] = True
+                di['reply_markup'] = getInlineKeyBoardWhenRSS(
+                    self._hashd, self._rssMeta.meta)
+                self._main._request("editMessageText", "post", json=di)
+                self.answer()
+                return
+            elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.DisableWebPagePreview:
+                self._rssMeta.config.disable_web_page_preview = not self._rssMeta.config.disable_web_page_preview
+                di = {'chat_id': self._rssMeta.chatId,
+                      'message_id': self._rssMeta.messageId}
+                di['text'] = getMediaInfo(
+                    self._rssMeta.meta, self._rssMeta.config)
+                di['parse_mode'] = 'HTML'
+                di['disable_web_page_preview'] = True
+                di['reply_markup'] = getInlineKeyBoardWhenRSS2(
+                    self._hashd, self._rssMeta.config)
+                self._main._request("editMessageText", "post", json=di)
+                self.answer()
+                return
+            elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.ShowRSSTitle:
+                self._rssMeta.config.show_RSS_title = not self._rssMeta.config.show_RSS_title
+                di = {'chat_id': self._rssMeta.chatId,
+                      'message_id': self._rssMeta.messageId}
+                di['text'] = getMediaInfo(
+                    self._rssMeta.meta, self._rssMeta.config)
+                di['parse_mode'] = 'HTML'
+                di['disable_web_page_preview'] = True
+                di['reply_markup'] = getInlineKeyBoardWhenRSS2(
+                    self._hashd, self._rssMeta.config)
+                self._main._request("editMessageText", "post", json=di)
+                self.answer()
+                return
+            elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.ShowContentTitle:
+                self._rssMeta.config.show_Content_title = not self._rssMeta.config.show_Content_title
+                di = {'chat_id': self._rssMeta.chatId,
+                      'message_id': self._rssMeta.messageId}
+                di['text'] = getMediaInfo(
+                    self._rssMeta.meta, self._rssMeta.config)
+                di['parse_mode'] = 'HTML'
+                di['disable_web_page_preview'] = True
+                di['reply_markup'] = getInlineKeyBoardWhenRSS2(
+                    self._hashd, self._rssMeta.config)
+                self._main._request("editMessageText", "post", json=di)
+                self.answer()
                 return
         else:
             self.answer('未知的按钮。')

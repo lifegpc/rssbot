@@ -18,8 +18,9 @@ from database import RSSConfig
 
 
 class rssMetaInfo:
-    def __init__(self, messageId: int, meta: dict, itemList: list, hashd: str, config: RSSConfig = None):
+    def __init__(self, messageId: int, chatId: int, meta: dict, itemList: list, hashd: str, config: RSSConfig = None):
         self.messageId = messageId
+        self.chatId = chatId
         self.meta = meta
         self.itemList = itemList
         self.hashd = hashd
@@ -28,6 +29,9 @@ class rssMetaInfo:
 
     def isTimeOut(self):
         return True if time() - self.__time > 300 else False
+
+    def flushTime(self):
+        self.__time = time()
 
 
 class rssMetaList:

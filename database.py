@@ -14,17 +14,16 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import sqlite3
-from RSSEntry import RSSEntry
+from config import RSSConfig
+from RSSEntry import RSSEntry, ChatEntry
 from typing import List
 from enum import Enum, unique
 from threading import Lock
+from hashl import sha256WithBase64
 
 
-class RSSConfig:
-    def __init__(self):
-        self.disable_web_page_preview = False
-        self.show_RSS_title = True
-        self.show_Content_title = True
+def dealtext(s: str):
+    return s.replace("'", "''")
 
 
 @unique
@@ -60,14 +59,14 @@ title TEXT,
 url TEXT,
 interval INT,
 lastupdatetime INT,
-config TEXT,
 id TEXT,
 PRIMARY KEY (id)
 );''')
-        if 'userList' not in self._exist_tables:
-            self._db.execute('''CREATE TABLE userList (
-userId INT,
-id TEXT
+        if 'chatList' not in self._exist_tables:
+            self._db.execute('''CREATE TABLE chatList (
+chatId INT,
+id TEXT,
+config TEXT
 )''')
         if 'userStatus' not in self._exist_tables:
             self._db.execute('''CREATE TABLE userStatus (
@@ -76,15 +75,11 @@ status INT,
 hashd TEXT,
 PRIMARY KEY (userId)
 )''')
-        if 'channelList' not in self._exist_tables:
-            self._db.execute('''CREATE TABLE channelList (
-channelId INT,
-id TEXT
-)''')
         if 'hashList' not in self._exist_tables:
             self._db.execute('''CREATE TABLE hashList (
 id TEXT,
 hash TEXT,
+time INT,
 PRIMARY KEY (hash)
 )''')
         self._db.commit()
@@ -97,17 +92,63 @@ PRIMARY KEY (hash)
         if not ok:
             self.__create_table()
 
+    def __removeRSSEntry(self, id: str) -> bool:
+        try:
+            self._db.execute(f'DELETE FROM RSSList WHERE id="{id}"')
+            self._db.execute(f'DELETE FROM hashList WHERE id="{id}"')
+            self._db.commit()
+            return True
+        except:
+            return False
+
     def __write_version(self):
         self._db.execute(
             f'INSERT INTO config VALUES ({self._version[0]}, {self._version[1]}, {self._version[2]}, {self._version[3]});')
         self._db.commit()
+
+    def addRSSList(self, title: str, url: str, chatId: int, config: RSSConfig, ttl: int = None):
+        with self._value_lock:
+            try:
+                hashd = sha256WithBase64(url)
+                cur = self._db.execute(
+                    f'SELECT * FROM RSSList WHERE id="{hashd}"')
+                has_data = False
+                for i in cur:
+                    has_data = True
+                if has_data:
+                    self._db.execute(f'DELETE FROM RSSList WHERE id="{hashd}"')
+                self._db.execute(
+                    f"INSERT INTO RSSList VALUES ('{dealtext(title)}', '{dealtext(url)}', {ttl if ttl is not None else 'null'}, null, '{hashd}')")
+                cur = self._db.execute(
+                    f'SELECT * FROM chatList WHERE id="{hashd}" AND chatId={chatId}')
+                has_data = False
+                for i in cur:
+                    has_data = True
+                if has_data:
+                    self._db.execute(
+                        f'DELETE FROM chatList WHERE id="{hashd}" AND chatId={chatId}')
+                self._db.execute(
+                    f"INSERT INTO chatList VALUES ({chatId}, '{hashd}', '{dealtext(config.toJson())}')")
+                self._db.commit()
+                return True
+            except:
+                return False
 
     def getAllRSSList(self) -> List[RSSEntry]:
         with self._value_lock:
             cur = self._db.execute(f'SELECT * FROM RSSList;')
             r = []
             for i in cur:
-                r.append(RSSEntry(i))
+                temp = RSSEntry(i)
+                cur2 = self._db.execute(
+                    f'SELECT * FROM chatList WHERE id="{temp.id}"')
+                for i2 in cur2:
+                    temp2 = ChatEntry(i2)
+                    temp.chatList.append(temp2)
+                if len(temp.chatList) == 0:
+                    self.__removeRSSEntry(temp.id)
+                else:
+                    r.append(temp)
             return r
 
     def getUserStatus(self, userId: int) -> (userStatus, str):
