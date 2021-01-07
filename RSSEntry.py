@@ -91,6 +91,16 @@ class HashEntries:
             r.append(i)
         return r
 
+    def has(self, d: HashEntry) -> bool:
+        if d.hash is None or d.id is None:
+            return False
+        for v in self.__list:
+            if v.hash == d.hash and v.id == d.id:
+                if d.time > v.time:
+                    v.time = d.time
+                return True
+        return False
+
     def setMaxCount(self, maxCount: int):
         self.__maxCount = maxCount if maxCount >= 1 else 100
         self.__removeMax()

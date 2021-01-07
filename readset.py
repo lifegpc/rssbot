@@ -14,10 +14,10 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 class settings:
-    def __init__(self, fn: str=None):
+    def __init__(self, fn: str = None):
         if fn is not None:
             self.parse(fn)
-    
+
     def parse(self, fn: str):
         d = {}
         with open(fn, 'r', encoding='utf8') as f:
@@ -27,4 +27,9 @@ class settings:
                 if len(l) == 2:
                     d[l[0]] = l[1]
         self._token = d['token'] if 'token' in d else None
-        self._maxCount = int(d['maxCount']) if 'maxCount' in d and d['maxCount'].isnumeric() else 100
+        self._maxCount = int(
+            d['maxCount']) if 'maxCount' in d and d['maxCount'].isnumeric() else 100
+        self._minTTL = int(d['minTTL']) if 'minTTL' in d and d['minTTL'].isnumeric(
+        ) and int(d['minTTL']) >= 1 else 5
+        self._maxTTL = int(d['maxTTL']) if 'maxTTL' in d and d['maxTTL'].isnumeric(
+        ) and int(d['maxTTL']) >= self._minTTL else max(1440, self._minTTL)

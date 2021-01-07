@@ -20,6 +20,7 @@ from typing import List
 from enum import Enum, unique
 from threading import Lock
 from hashl import sha256WithBase64
+from time import time
 
 
 def dealtext(s: str):
@@ -115,15 +116,15 @@ PRIMARY KEY (hash)
                 cur = self._db.execute(
                     f'SELECT * FROM RSSList WHERE id="{hashd}"')
                 has_data = False
-                for i in cur:
+                for i in cur:  # pylint: disable=unused-variable
                     has_data = True
                     break
                 if has_data:
                     self._db.execute(
-                        f"UPDATE RSSList SET title='{dealtext(title)}', ttl={ttl if ttl is not None else 'null'} WHERE id='{hashd}'")
+                        f"UPDATE RSSList SET title='{dealtext(title)}', interval={ttl if ttl is not None else 'null'} WHERE id='{hashd}'")
                 else:
                     self._db.execute(
-                        f"INSERT INTO RSSList VALUES ('{dealtext(title)}', '{dealtext(url)}', {ttl if ttl is not None else 'null'}, null, '{hashd}')")
+                        f"INSERT INTO RSSList VALUES ('{dealtext(title)}', '{dealtext(url)}', {ttl if ttl is not None else 'null'}, {int(time())}, '{hashd}')")
                 cur = self._db.execute(
                     f'SELECT * FROM chatList WHERE id="{hashd}" AND chatId={chatId}')
                 has_data2 = False
@@ -144,7 +145,7 @@ PRIMARY KEY (hash)
                         break
                     if has_data3:
                         self._db.execute(
-                            f"DELETE FROM hashList WHERE ID='{hashd}'")
+                            f"DELETE FROM hashList WHERE id='{hashd}'")
                     for v in hashEntries.getList():
                         self._db.execute(
                             f"INSERT INTO hashList VALUES ('{v.id}', '{v.hash}', {v.time})")
@@ -174,16 +175,27 @@ PRIMARY KEY (hash)
                     r.append(temp)
             return r
 
-    def getUserStatus(self, userId: int) -> (userStatus, str):
+    def getRSSListByChatId(self, chatId: int) -> List[RSSEntry]:
         with self._value_lock:
             cur = self._db.execute(
-                f'SELECT * FROM userStatus WHERE userId={userId}')
+                f"SELECT * FROM chatList WHERE chatId={chatId}")
+            RSSEntries = []
             for i in cur:
-                try:
+                chatEntry = ChatEntry(i)
+                cur = self._db.execute(
+                    f"SELECT * FROM RSSList WHERE id='{chatEntry.id}'")
+                for k in cur:
+                    rssEntry = RSSEntry(k, self._main._setting._maxCount)
+
+    def getUserStatus(self, userId: int) -> (userStatus, str):
+        with self._value_lock:
+            try:
+                cur = self._db.execute(
+                    f'SELECT * FROM userStatus WHERE userId={userId}')
+                for i in cur:
                     return userStatus(i[1]), i[2]
-                except:
-                    pass
-            return userStatus.normalStatus, ''
+            except:
+                return userStatus.normalStatus, ''
 
     def setUserStatus(self, userId: int, status: userStatus = userStatus.normalStatus, hashd: str = '') -> bool:
         with self._value_lock:
@@ -211,5 +223,34 @@ PRIMARY KEY (hash)
                         f'INSERT INTO userStatus VALUES ({userId}, {status.value}, "{hashd}");')
                 self._db.commit()
                 return True
+            except:
+                return False
+
+    def updateRSS(self, title: str, url: str, lastupdatetime: int, hashEntries: HashEntries, ttl: int = None):
+        with self._value_lock:
+            try:
+                hashd = sha256WithBase64(url)
+                cur = self._db.execute(
+                    f'SELECT * FROM RSSList WHERE id="{hashd}"')
+                has_data = False
+                for i in cur:  # pylint: disable=unused-variable
+                    has_data = True
+                    break
+                if not has_data:
+                    return False
+                self._db.execute(
+                    f"UPDATE RSSList SET title='{dealtext(title)}', interval={ttl if ttl is not None else 'null'}, lastupdatetime={lastupdatetime} WHERE id='{hashd}'")
+                cur = self._db.execute(
+                    f"SELECT * FROM hashList WHERE id='{hashd}'")
+                has_data2 = False
+                for i in cur:
+                    has_data2 = True
+                    break
+                if has_data2:
+                    self._db.execute(
+                        f"DELETE FROM hashList WHERE id='{hashd}'")
+                for v in hashEntries.getList():
+                    self._db.execute(
+                        f"INSERT INTO hashList VALUES ('{v.id}', '{v.hash}', {v.time})")
             except:
                 return False

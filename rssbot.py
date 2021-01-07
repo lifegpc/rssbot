@@ -29,6 +29,7 @@ from rsstempdict import rssMetaInfo, rssMetaList
 from random import randrange
 from textc import textc
 from re import search, I
+from rsschecker import RSSCheckerThread
 
 
 def getMediaInfo(m: dict, config: RSSConfig = RSSConfig()) -> str:
@@ -251,6 +252,8 @@ class main:
         self._upi = None
         self._updateThread = updateThread(self)
         self._updateThread.start()
+        self._rssCheckerThread = RSSCheckerThread(self)
+        self._rssCheckerThread.start()
 
 
 class updateThread(Thread):
