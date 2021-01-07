@@ -195,7 +195,8 @@ PRIMARY KEY (hash)
                 for i in cur:
                     return userStatus(i[1]), i[2]
             except:
-                return userStatus.normalStatus, ''
+                pass
+            return userStatus.normalStatus, ''
 
     def setUserStatus(self, userId: int, status: userStatus = userStatus.normalStatus, hashd: str = '') -> bool:
         with self._value_lock:
@@ -252,5 +253,6 @@ PRIMARY KEY (hash)
                 for v in hashEntries.getList():
                     self._db.execute(
                         f"INSERT INTO hashList VALUES ('{v.id}', '{v.hash}', {v.time})")
+                self._db.commit()
             except:
                 return False
