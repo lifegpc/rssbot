@@ -595,6 +595,14 @@ class callbackQueryHandle(Thread):
                     self.answer('订阅成功！')
                 else:
                     self.answer('订阅失败！')
+                di = {'chat_id': self._rssMeta.chatId,
+                      'message_id': self._rssMeta.messageId}
+                di['text'] = getMediaInfo(
+                    self._rssMeta.meta, self._rssMeta.config)
+                di['parse_mode'] = 'HTML'
+                di['disable_web_page_preview'] = True
+                self._main._request("editMessageText", "post", json=di)
+                return
             elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.SendPriview:
                 chatId = None
                 if 'chatId' in self._rssMeta.meta and self._rssMeta.meta['chatId'] is not None:
