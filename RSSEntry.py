@@ -71,9 +71,16 @@ class HashEntries:
 
     def add(self, d: HashEntry):
         if d.hash is not None and d.id is not None:
+            o = None
             for v in self.__list:
                 if v.hash == d.hash and v.id == d.id:
-                    return
+                    if d.time > v.time:
+                        o = v
+                        break
+                    else:
+                        return
+            if o is not None:
+                self.__list.remove(o)
             self.__list.append(d)
             self.__removeMax()
 
