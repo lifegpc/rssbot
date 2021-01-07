@@ -582,7 +582,7 @@ class callbackQueryHandle(Thread):
                 hashEntries = HashEntries(self._main._setting._maxCount)
                 tempList = self._rssMeta.itemList.copy()
                 tempList.reverse()
-                for v in tempList[-100:]:
+                for v in tempList[-self._main._setting._maxCount:]:
                     hashEntries.add(calHash(url, v))
                 suc = self._main._db.addRSSList(
                     title, url, chatId, config, ttl, hashEntries)
