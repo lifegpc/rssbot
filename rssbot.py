@@ -30,6 +30,7 @@ from random import randrange
 from textc import textc
 from re import search, I
 from rsschecker import RSSCheckerThread
+from rsslist import getInlineKeyBoardForRSSList, InlineKeyBoardForRSSList
 
 
 def getMediaInfo(m: dict, config: RSSConfig = RSSConfig()) -> str:
@@ -73,7 +74,7 @@ class InlineKeyBoardCallBack(Enum):
     SendMedia = 10
 
 
-def getInlineKeyBoardWhenRSS(hashd: str, m: dict) -> str:
+def getInlineKeyBoardWhenRSS(hashd: str, m: dict) -> dict:
     d = []
     i = 0
     d.append([])
@@ -476,14 +477,15 @@ class messageHandle(Thread):
                         self._main._db.setUserStatus(
                             self._fromUserId, userStatus.normalStatus)
                     return
-        if self._botCommand is None or self._botCommand not in ['/help', '/rss']:
+        if self._botCommand is None or self._botCommand not in ['/help', '/rss', '/rsslist']:
             self._botCommand = '/help'
         di = {'chat_id': self._chatId}
         if self.__getChatType() in ['supergroup', 'group'] and self._fromUserId is not None:
             di['reply_to_message_id'] = self._messageId
         if self._botCommand == '/help':
             di['text'] = '''/help   显示帮助
-/rss url    订阅RSS'''
+/rss url    订阅RSS
+/rsslist [chatId]   获取RSS订阅列表'''
         elif self._botCommand == '/rss':
             self._botCommandPara = self._getCommandlinePara()
             self._uri = None
@@ -495,6 +497,22 @@ class messageHandle(Thread):
                 di['text'] = '没有找到URL'
             else:
                 di['text'] = '正在获取信息中……'
+        elif self._botCommand == '/rsslist':
+            self._botCommandPara = self._getCommandlinePara()
+            targetChatId = self._chatId
+            for i in self._botCommandPara:
+                if search(r'^[\+-]?[0-9]+$', i) is not None:
+                    targetChatId = int(i)
+            if targetChatId == self._chatId:
+                try:
+                    rssList = self._main._db.getRSSListByChatId(self._chatId)
+                    di['text'] = '列表如下：'
+                    di['reply_markup'] = getInlineKeyBoardForRSSList(
+                        self._chatId, rssList)
+                except:
+                    di['text'] = '获取列表失败。'
+            else:
+                di['text'] = '正在确认操作者权限……'
         re = self._main._request('sendMessage', 'post', json=di)
         if self._botCommand == '/rss' and self._uri is not None and re is not None and 'ok' in re and re['ok']:
             re = re['result']
@@ -543,14 +561,16 @@ class callbackQueryHandle(Thread):
 
     def run(self):
         self._callbackQueryId = self._data['id']
-        l = self._data['data'].split(',', 3)
-        if len(l) != 3:
+        l = self._data['data'].split(',')
+        if len(l) < 3:
             self.answer('错误的按钮数据。')
             return
+        self._inputList = l
         try:
             self._loc = int(l[0])
-            self._hashd = l[1]
-            self._command = int(l[2])
+            if self._loc == 0:
+                self._hashd = l[1]
+                self._command = int(l[2])
         except:
             self.answer('错误的按钮数据。')
             return
