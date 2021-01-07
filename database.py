@@ -186,6 +186,9 @@ PRIMARY KEY (hash)
                     f"SELECT * FROM RSSList WHERE id='{chatEntry.id}'")
                 for k in cur:
                     rssEntry = RSSEntry(k, self._main._setting._maxCount)
+                    rssEntry.chatList.append(chatEntry)
+                    RSSEntries.append(rssEntry)
+            return RSSEntries
 
     def getUserStatus(self, userId: int) -> (userStatus, str):
         with self._value_lock:

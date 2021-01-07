@@ -336,6 +336,8 @@ class messageHandle(Thread):
         for key in ["new_chat_members", "left_chat_member", "new_chat_title", "new_chat_photo", "delete_chat_photo", "pinned_message"]:
             if key in self._data:
                 return
+        if self._data['chat']['type'] == 'channel':
+            return
         self._messageId = self._data['message_id']
         self._chatId = self.__getChatId()
         if self._chatId is None:
