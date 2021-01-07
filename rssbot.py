@@ -14,6 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from database import database, userStatus, RSSConfig
+from RSSEntry import HashEntry, HashEntries, calHash
 from os.path import exists
 from readset import settings
 from requests import Session
@@ -46,10 +47,14 @@ def getMediaInfo(m: dict, config: RSSConfig = RSSConfig()) -> str:
         s = f"""{s}\n群/频道ID：{m['chatId']}"""
     elif 'userId' in m and m['userId'] is not None:
         s = f"""{s}\n<a href="tg://user?id={m['userId']}">订阅的账号</a>"""
+    if '_type' in m and m['_type'] is not None:
+        s = f"""{s}\n类型：{m['_type']}"""
     s = f"{s}\n设置："
     s = f"{s}\n禁用预览：{config.disable_web_page_preview}"
     s = f"{s}\n显示RSS标题：{config.show_RSS_title}"
     s = f"{s}\n显示内容标题：{config.show_Content_title}"
+    s = f"{s}\n显示内容：{config.show_content}"
+    s = f"{s}\n发送媒体：{config.send_media}"
     return s
 
 
@@ -63,6 +68,8 @@ class InlineKeyBoardCallBack(Enum):
     DisableWebPagePreview = 6
     ShowRSSTitle = 7
     ShowContentTitle = 8
+    ShowContent = 9
+    SendMedia = 10
 
 
 def getInlineKeyBoardWhenRSS(hashd: str, m: dict) -> str:
@@ -108,6 +115,14 @@ def getInlineKeyBoardWhenRSS2(hashd: str, config: RSSConfig) -> str:
     temp = '隐藏内容标题' if config.show_Content_title else '显示内容标题'
     d[i].append(
         {'text': temp, 'callback_data': f'0,{hashd},{InlineKeyBoardCallBack.ShowContentTitle.value}'})
+    temp = '隐藏内容' if config.show_content else '显示内容'
+    d[i].append(
+        {'text': temp, 'callback_data': f'0,{hashd},{InlineKeyBoardCallBack.ShowContent.value}'})
+    d.append([])
+    i = i + 1
+    temp = '禁用发送媒体' if config.send_media else '启用发送媒体'
+    d[i].append(
+        {'text': temp, 'callback_data': f'0,{hashd},{InlineKeyBoardCallBack.SendMedia.value}'})
     d[i].append(
         {'text': '返回', 'callback_data': f'0,{hashd},{InlineKeyBoardCallBack.BackToNormalPage.value}'})
     return {'inline_keyboard': d}
@@ -148,14 +163,14 @@ class main:
         elif 'link' in content and content['link'] is not None and content['link'] != '':
             text.addtotext(
                 f"""<a href="{content['link']}">{escape(content['link'])}</a>""")
-        if 'description' in content and content['description'] is not None and content['description'] != '':
+        if config.show_content and 'description' in content and content['description'] is not None and content['description'] != '':
             text.addtotext(content['description'])
 
         def getListCount(content: dict, key: str):
-            if key not in content and content[key] is None:
+            if key not in content or content[key] is None:
                 return 0
             return len(content[key])
-        if getListCount(content, 'imgList') == 0 and getListCount(content, 'videoList') == 0:
+        if not config.send_media or (getListCount(content, 'imgList') == 0 and getListCount(content, 'videoList') == 0):
             if config.disable_web_page_preview:
                 di['disable_web_page_preview'] = True
             di['text'] = text.tostr()
@@ -218,13 +233,13 @@ class main:
                 self._upi = i['update_id'] + 1
 
     def start(self):
-        self._db = database()
-        if not exists('settings.txt'):
-            print('找不到settings.txt')
-            return -1
         self._setting = settings('settings.txt')
         if self._setting._token is None:
             print('没有机器人token')
+            return -1
+        self._db = database(self)
+        if not exists('settings.txt'):
+            print('找不到settings.txt')
             return -1
         self._r = Session()
         self._me = self._request('getMe')
@@ -390,9 +405,9 @@ class messageHandle(Thread):
                                         continue
                                     if chatMember['status'] not in ['creator', 'administrator']:
                                         continue
-                                    if re2['type'] == 'channel' and ('can_post_messages' not in chatMember or not chatMember['can_post_messages']):
+                                    if re2['type'] == 'channel' and chatMember['status'] == 'administrator' and ('can_post_messages' not in chatMember or not chatMember['can_post_messages']):
                                         continue
-                                    if re2['type'] == 'channel' and ('can_edit_messages' not in chatMember or not chatMember['can_edit_messages']):
+                                    if re2['type'] == 'channel' and chatMember['status'] == 'administrator' and ('can_edit_messages' not in chatMember or not chatMember['can_edit_messages']):
                                         continue
                                     chatM = chatMember
                                 if chatM is None:
@@ -564,7 +579,13 @@ class callbackQueryHandle(Thread):
                     return
                 config = self._rssMeta.config
                 ttl = self._rssMeta.meta['ttl'] if 'ttl' in self._rssMeta.meta else None
-                suc = self._main._db.addRSSList(title, url, chatId, config, ttl)
+                hashEntries = HashEntries(self._main._setting._maxCount)
+                tempList = self._rssMeta.itemList.copy()
+                tempList.reverse()
+                for v in tempList[-100:]:
+                    hashEntries.add(calHash(url, v))
+                suc = self._main._db.addRSSList(
+                    title, url, chatId, config, ttl, hashEntries)
                 if suc:
                     self.answer('订阅成功！')
                 else:
@@ -666,6 +687,32 @@ class callbackQueryHandle(Thread):
                 return
             elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.ShowContentTitle:
                 self._rssMeta.config.show_Content_title = not self._rssMeta.config.show_Content_title
+                di = {'chat_id': self._rssMeta.chatId,
+                      'message_id': self._rssMeta.messageId}
+                di['text'] = getMediaInfo(
+                    self._rssMeta.meta, self._rssMeta.config)
+                di['parse_mode'] = 'HTML'
+                di['disable_web_page_preview'] = True
+                di['reply_markup'] = getInlineKeyBoardWhenRSS2(
+                    self._hashd, self._rssMeta.config)
+                self._main._request("editMessageText", "post", json=di)
+                self.answer()
+                return
+            elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.ShowContent:
+                self._rssMeta.config.show_content = not self._rssMeta.config.show_content
+                di = {'chat_id': self._rssMeta.chatId,
+                      'message_id': self._rssMeta.messageId}
+                di['text'] = getMediaInfo(
+                    self._rssMeta.meta, self._rssMeta.config)
+                di['parse_mode'] = 'HTML'
+                di['disable_web_page_preview'] = True
+                di['reply_markup'] = getInlineKeyBoardWhenRSS2(
+                    self._hashd, self._rssMeta.config)
+                self._main._request("editMessageText", "post", json=di)
+                self.answer()
+                return
+            elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.SendMedia:
+                self._rssMeta.config.send_media = not self._rssMeta.config.send_media
                 di = {'chat_id': self._rssMeta.chatId,
                       'message_id': self._rssMeta.messageId}
                 di['text'] = getMediaInfo(

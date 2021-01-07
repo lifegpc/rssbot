@@ -15,7 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import sqlite3
 from config import RSSConfig
-from RSSEntry import RSSEntry, ChatEntry
+from RSSEntry import RSSEntry, ChatEntry, HashEntry, HashEntries
 from typing import List
 from enum import Enum, unique
 from threading import Lock
@@ -84,13 +84,15 @@ PRIMARY KEY (hash)
 )''')
         self._db.commit()
 
-    def __init__(self):
+    def __init__(self, m):
         self._version = [1, 0, 0, 0]
         self._value_lock = Lock()
         self._db = sqlite3.connect('data.db', check_same_thread=False)
         ok = self.__check_database()
         if not ok:
             self.__create_table()
+        from rssbot import main
+        self._main: main = m
 
     def __removeRSSEntry(self, id: str) -> bool:
         try:
@@ -106,7 +108,7 @@ PRIMARY KEY (hash)
             f'INSERT INTO config VALUES ({self._version[0]}, {self._version[1]}, {self._version[2]}, {self._version[3]});')
         self._db.commit()
 
-    def addRSSList(self, title: str, url: str, chatId: int, config: RSSConfig, ttl: int = None):
+    def addRSSList(self, title: str, url: str, chatId: int, config: RSSConfig, ttl: int = None, hashEntries: HashEntries = None):
         with self._value_lock:
             try:
                 hashd = sha256WithBase64(url)
@@ -115,20 +117,37 @@ PRIMARY KEY (hash)
                 has_data = False
                 for i in cur:
                     has_data = True
+                    break
                 if has_data:
-                    self._db.execute(f'DELETE FROM RSSList WHERE id="{hashd}"')
-                self._db.execute(
-                    f"INSERT INTO RSSList VALUES ('{dealtext(title)}', '{dealtext(url)}', {ttl if ttl is not None else 'null'}, null, '{hashd}')")
+                    self._db.execute(
+                        f"UPDATE RSSList SET title='{dealtext(title)}', ttl={ttl if ttl is not None else 'null'} WHERE id='{hashd}'")
+                else:
+                    self._db.execute(
+                        f"INSERT INTO RSSList VALUES ('{dealtext(title)}', '{dealtext(url)}', {ttl if ttl is not None else 'null'}, null, '{hashd}')")
                 cur = self._db.execute(
                     f'SELECT * FROM chatList WHERE id="{hashd}" AND chatId={chatId}')
-                has_data = False
+                has_data2 = False
                 for i in cur:
-                    has_data = True
-                if has_data:
+                    has_data2 = True
+                    break
+                if has_data2:
                     self._db.execute(
                         f'DELETE FROM chatList WHERE id="{hashd}" AND chatId={chatId}')
                 self._db.execute(
                     f"INSERT INTO chatList VALUES ({chatId}, '{hashd}', '{dealtext(config.toJson())}')")
+                if hashEntries is not None and not has_data:
+                    cur = self._db.execute(
+                        f"SELECT * FROM hashList WHERE id='{hashd}'")
+                    has_data3 = False
+                    for i in cur:
+                        has_data3 = True
+                        break
+                    if has_data3:
+                        self._db.execute(
+                            f"DELETE FROM hashList WHERE ID='{hashd}'")
+                    for v in hashEntries.getList():
+                        self._db.execute(
+                            f"INSERT INTO hashList VALUES ('{v.id}', '{v.hash}', {v.time})")
                 self._db.commit()
                 return True
             except:
@@ -139,12 +158,16 @@ PRIMARY KEY (hash)
             cur = self._db.execute(f'SELECT * FROM RSSList;')
             r = []
             for i in cur:
-                temp = RSSEntry(i)
+                temp = RSSEntry(i, self._main._setting._maxCount)
                 cur2 = self._db.execute(
                     f'SELECT * FROM chatList WHERE id="{temp.id}"')
                 for i2 in cur2:
                     temp2 = ChatEntry(i2)
                     temp.chatList.append(temp2)
+                cur3 = self._db.execute(
+                    f"SELECT * FROM hashList WHERE id='{temp.id}' ORDER BY time")
+                for i3 in cur3:
+                    temp.hashList.add(HashEntry(i3))
                 if len(temp.chatList) == 0:
                     self.__removeRSSEntry(temp.id)
                 else:

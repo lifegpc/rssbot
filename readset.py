@@ -27,3 +27,4 @@ class settings:
                 if len(l) == 2:
                     d[l[0]] = l[1]
         self._token = d['token'] if 'token' in d else None
+        self._maxCount = int(d['maxCount']) if 'maxCount' in d and d['maxCount'].isnumeric() else 100
