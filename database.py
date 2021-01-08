@@ -178,16 +178,12 @@ PRIMARY KEY (hash)
     def getRSSListByChatId(self, chatId: int) -> List[RSSEntry]:
         with self._value_lock:
             cur = self._db.execute(
-                f"SELECT * FROM chatList WHERE chatId={chatId}")
+                f"SELECT RSSList.title, RSSList.url, RSSList.interval, RSSList.lastupdatetime, RSSList.id, chatList.config FROM RSSList, chatList WHERE chatList.chatId = {chatId} AND RSSList.id = chatList.id ORDER BY title")
             RSSEntries = []
             for i in cur:
-                chatEntry = ChatEntry(i)
-                cur = self._db.execute(
-                    f"SELECT * FROM RSSList WHERE id='{chatEntry.id}'")
-                for k in cur:
-                    rssEntry = RSSEntry(k, self._main._setting._maxCount)
-                    rssEntry.chatList.append(chatEntry)
-                    RSSEntries.append(rssEntry)
+                rssEntry = RSSEntry(i, self._main._setting._maxCount)
+                rssEntry.chatList.append(ChatEntry((chatId, i[4], i[5])))
+                RSSEntries.append(rssEntry)
             return RSSEntries
 
     def getUserStatus(self, userId: int) -> (userStatus, str):
