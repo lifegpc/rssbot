@@ -505,7 +505,7 @@ class messageHandle(Thread):
             for i in self._botCommandPara:
                 if search(r'^[\+-]?[0-9]+$', i) is not None:
                     targetChatId = int(i)
-            if targetChatId == self._chatId:
+            if targetChatId == self._chatId and self._data['chat']['type'] == 'private':
                 try:
                     rssList = self._main._db.getRSSListByChatId(self._chatId)
                     di['text'] = '列表如下：'
