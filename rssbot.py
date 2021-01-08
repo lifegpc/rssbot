@@ -600,6 +600,13 @@ class callbackQueryHandle(Thread):
             self.answer('错误的按钮数据。')
             return
         if self._loc == 0:
+            if 'message' not in self._data:
+                self.answer('找不到信息。')
+                return
+            if self._data['message']['chat']['type'] != 'private':
+                if checkUserPermissionsInChat(self._main, self._data['message']['chat']['id'], self._fromUserId) != UserPermissionsInChatCheckResult.OK:
+                    self.answer('您没有权限操作')
+                    return
             try:
                 self._inlineKeyBoardCommand = InlineKeyBoardCallBack(
                     self._command)
