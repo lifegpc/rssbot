@@ -39,8 +39,15 @@ class RSSCheckerThread(Thread):
                                 for info in rss.chatList:
                                     chatEntry: ChatEntry = info
                                     try:
-                                        self._main._sendMessage(
-                                            chatEntry.chatId, meta, item, chatEntry.config)
+                                        for i in range(self._main._setting._maxRetryCount + 1):
+                                            if self._main._sendMessage(chatEntry.chatId, meta, item, chatEntry.config):
+                                                break
+                                            sleep(5)
+                                            if i < self._main._setting._maxRetryCount:
+                                                print(f'开始第{i+i}次重试')
+                                            else:
+                                                self._main._request('sendMessage', 'post', {
+                                                                    'chat_id': chatEntry.chatId, 'text': f'已尝试重发{i}次，发送失败。'})
                                     except:
                                         print(format_exc())
                     self._main._db.updateRSS(
