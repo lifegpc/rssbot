@@ -13,10 +13,12 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-from RSSEntry import RSSEntry
+from RSSEntry import RSSEntry, ChatEntry
 from typing import List
 from enum import Enum, unique
-from math import ceil
+from math import ceil, floor
+from textc import textc, timeToStr
+from html import escape
 
 
 @unique
@@ -27,9 +29,29 @@ class InlineKeyBoardForRSSList(Enum):
     NextPage = 3
     Close = 4
     Content = 5
+    BackToList = 6
 
 
-def getInlineKeyBoardForRSSList(chatId: int, RSSEntries: List[RSSEntry], page: int = 1, lastPage: bool = False) -> dict:
+def getTextContentForRSSInList(rssEntry: RSSEntry) -> str:
+    text = textc()
+    text.addtotext(f"""<a href="{rssEntry.url}">{rssEntry.title}</a>""")
+    temp = '更新间隔：未知' if rssEntry.interval is None else f'更新间隔：{rssEntry.interval}分'
+    text.addtotext(temp)
+    temp = '上次更新时间：未知' if rssEntry.lastupdatetime is None or rssEntry.lastupdatetime < 0 else f'上次更新时间：{timeToStr(rssEntry.lastupdatetime)}'
+    text.addtotext(temp)
+    if len(rssEntry.chatList) > 0:
+        chatEntry: ChatEntry = rssEntry.chatList[0]
+        config = chatEntry.config
+        text.addtotext("设置：")
+        text.addtotext(f"禁用预览：{config.disable_web_page_preview}")
+        text.addtotext(f"显示RSS标题：{config.show_RSS_title}")
+        text.addtotext(f"显示内容标题：{config.show_Content_title}")
+        text.addtotext(f"显示内容：{config.show_content}")
+        text.addtotext(f"发送媒体：{config.send_media}")
+    return text.tostr()
+
+
+def getInlineKeyBoardForRSSList(chatId: int, RSSEntries: List[RSSEntry], page: int = 1, lastPage: bool = False, itemIndex: int = None) -> dict:
     d = []
     i = -1
     lineLimit = 7
@@ -37,6 +59,8 @@ def getInlineKeyBoardForRSSList(chatId: int, RSSEntries: List[RSSEntry], page: i
     pn = ceil(l / lineLimit)
     if lastPage:
         page = pn
+    if itemIndex is not None and itemIndex >= 0:
+        page = floor(itemIndex / lineLimit) + 1
     if l != 0:
         page = max(min(pn, page), 1)
         s = max(lineLimit * (page - 1), 0)
@@ -69,4 +93,13 @@ def getInlineKeyBoardForRSSList(chatId: int, RSSEntries: List[RSSEntry], page: i
     i = i + 1
     d[i].append(
         {'text': '关闭', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.Close.value}'})
+    return {'inline_keyboard': d}
+
+
+def getInlineKeyBoardForRSSInList(chatId: int, rssEntry: RSSEntry, index: int) -> dict:
+    d = []
+    i = -1
+    d.append([])
+    d[i].append(
+        {'text': '返回', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.BackToList.value},{index}'})
     return {'inline_keyboard': d}

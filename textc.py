@@ -13,6 +13,9 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+from time import strftime, localtime, timezone
+
+
 class textc:
     def __init__(self):
         self.__str = ''
@@ -25,3 +28,11 @@ class textc:
             self.__str = f"{self.__str}{s}"
         else:
             self.__str = f'{self.__str}\n{s}'
+
+
+def timeToStr(t: int) -> str:
+    te = strftime('%Y-%m-%dT%H:%M:%S', localtime(t))
+    op = '-' if timezone > 0 else '+'
+    te = te + op + \
+        f'{int(abs(timezone)/3600):02}:{int(abs(timezone)%3600/60):02}'
+    return te

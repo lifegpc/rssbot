@@ -30,7 +30,7 @@ from random import randrange
 from textc import textc
 from re import search, I
 from rsschecker import RSSCheckerThread
-from rsslist import getInlineKeyBoardForRSSList, InlineKeyBoardForRSSList
+from rsslist import getInlineKeyBoardForRSSList, InlineKeyBoardForRSSList, getInlineKeyBoardForRSSInList, getTextContentForRSSInList
 from usercheck import checkUserPermissionsInChat, UserPermissionsInChatCheckResult
 
 
@@ -834,6 +834,31 @@ class callbackQueryHandle(Thread):
                 di = {'chat_id': self._data['message']['chat']['id'],
                       'message_id': self._data['message']['message_id']}
                 self._main._request("deleteMessage", "post", json=di)
+                return
+            elif self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.Content:
+                di = {'chat_id': self._data['message']['chat']['id'],
+                      'message_id': self._data['message']['message_id']}
+                rssList = self._main._db.getRSSListByChatId(chatId)
+                ind = int(self._inputList[3])
+                if ind >= len(rssList):
+                    ind = len(rssList) - 1
+                di['text'] = getTextContentForRSSInList(rssList[ind])
+                di['parse_mode'] = 'HTML'
+                di['reply_markup'] = getInlineKeyBoardForRSSInList(
+                    chatId, rssList[ind], ind)
+                self._main._request("editMessageText", "post", json=di)
+                self.answer()
+                return
+            elif self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.BackToList:
+                di = {'chat_id': self._data['message']['chat']['id'],
+                      'message_id': self._data['message']['message_id']}
+                rssList = self._main._db.getRSSListByChatId(chatId)
+                ind = int(self._inputList[3])
+                di['text'] = '列表如下：'
+                di['reply_markup'] = getInlineKeyBoardForRSSList(
+                    chatId, rssList, itemIndex=ind)
+                self._main._request("editMessageText", "post", json=di)
+                self.answer()
                 return
         else:
             self.answer('未知的按钮。')
