@@ -37,7 +37,7 @@ class HTMLSimpleParser(HTMLParser):
 
     def handle_startendtag(self, tag, attrs):
         if tag == 'br':
-            data = data + '\n'
+            self.data = self.data + '\n'
 
     def handle_starttag(self, tag, attrs):
         if tag == 'br':
