@@ -30,11 +30,15 @@ class InlineKeyBoardForRSSList(Enum):
     Close = 4
     Content = 5
     BackToList = 6
+    Unsubscribe = 7
+    ConfirmUnsubscribe = 8
+    CancleUnsubscribe = 9
 
 
 def getTextContentForRSSInList(rssEntry: RSSEntry) -> str:
     text = textc()
-    text.addtotext(f"""<a href="{rssEntry.url}">{rssEntry.title}</a>""")
+    text.addtotext(
+        f"""<a href="{rssEntry.url}">{escape(rssEntry.title)}</a>""")
     temp = '更新间隔：未知' if rssEntry.interval is None else f'更新间隔：{rssEntry.interval}分'
     text.addtotext(temp)
     temp = '上次更新时间：未知' if rssEntry.lastupdatetime is None or rssEntry.lastupdatetime < 0 else f'上次更新时间：{timeToStr(rssEntry.lastupdatetime)}'
@@ -49,6 +53,10 @@ def getTextContentForRSSInList(rssEntry: RSSEntry) -> str:
         text.addtotext(f"显示内容：{config.show_content}")
         text.addtotext(f"发送媒体：{config.send_media}")
     return text.tostr()
+
+
+def getTextContentForRSSUnsubscribeInList(rssEntry: RSSEntry) -> str:
+    return f"""你是否要取消订阅<a href="{rssEntry.url}">{escape(rssEntry.title)}</a>？"""
 
 
 def getInlineKeyBoardForRSSList(chatId: int, RSSEntries: List[RSSEntry], page: int = 1, lastPage: bool = False, itemIndex: int = None) -> dict:
@@ -100,6 +108,11 @@ def getInlineKeyBoardForRSSInList(chatId: int, rssEntry: RSSEntry, index: int) -
     d = []
     i = -1
     d.append([])
+    i = i + 1
+    d[i].append(
+        {'text': '取消订阅', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.Unsubscribe.value},{index}'})
+    d.append([])
+    i = i + 1
     d[i].append(
         {'text': '返回', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.BackToList.value},{index}'})
     return {'inline_keyboard': d}

@@ -135,10 +135,10 @@ class main:
     def __init__(self):
         pass
 
-    def _request(self, methodName: str, HTTPMethod: str = 'get', data: dict = None, json: dict = None, files: dict = None, returnType: str = 'json'):
+    def _request(self, methodName: str, HTTPMethod: str = 'get', data: dict = None, json: dict = None, files: dict = None, returnType: str = 'json', telegramBotApiServer: str = None):
         try:
             r = self._r.request(
-                HTTPMethod, f'https://api.telegram.org/bot{self._setting._token}/{methodName}', data=data, json=json, files=files)
+                HTTPMethod, f'{self._telegramBotApiServer if telegramBotApiServer is None else telegramBotApiServer}/bot{self._setting._token}/{methodName}', data=data, json=json, files=files)
             if r.status_code != 200:
                 return None
             if returnType == 'json':
@@ -240,6 +240,10 @@ class main:
         if self._setting._token is None:
             print('没有机器人token')
             return -1
+        self._telegramBotApiServer = self._setting._telegramBotApiServer
+        if self._telegramBotApiServer != 'https://api.telegram.org':
+            self._request("logOut", "post",
+                          telegramBotApiServer="https://api.telegram.org")
         self._db = database(self)
         if not exists('settings.txt'):
             print('找不到settings.txt')
