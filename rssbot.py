@@ -494,7 +494,10 @@ class messageHandle(Thread):
                 if i.find('://') > -1:
                     self._uri = i
                     break
-            if self._uri is None:
+            if self._data['chat']['type'] != "private" and checkUserPermissionsInChat(self._main, chatId, self._fromUserId) != UserPermissionsInChatCheckResult.OK:
+                di['text'] = '你没有权限操作。'
+                self._uri = None
+            elif self._uri is None:
                 di['text'] = '没有找到URL'
             else:
                 di['text'] = '正在获取信息中……'
@@ -538,6 +541,8 @@ class messageHandle(Thread):
                 media['userId'] = None
                 if self._fromUserId:
                     media['userId'] = self._fromUserId
+                if self._data['chat']['type'] != "private" and checkUserPermissionsInChat(self._main, chatId, self._fromUserId) == UserPermissionsInChatCheckResult.OK:
+                    media['chatId'] = chatId
                 self._hash = md5WithBase64(
                     f'{self._uri},{self._messageId},{self._chatId}')
                 di['text'] = getMediaInfo(media)
