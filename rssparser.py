@@ -187,7 +187,10 @@ class RSSParser:
                     m[i.nodeName] = i.firstChild.nodeValue
                 else:
                     m[i.nodeName] = p.data
-                if i.nodeName == 'description':
+                if i.nodeName in ['description', 'content:encoded']:
+                    if i.nodeName == 'content:encoded':
+                        m['description'] = m['content:encoded']
+                        del m['content:encoded']
                     m['imgList'] = p.imgList
                     m['videoList'] = p.videoList
             else:
