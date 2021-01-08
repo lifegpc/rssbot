@@ -494,7 +494,7 @@ class messageHandle(Thread):
                 if i.find('://') > -1:
                     self._uri = i
                     break
-            if self._data['chat']['type'] != "private" and checkUserPermissionsInChat(self._main, chatId, self._fromUserId) != UserPermissionsInChatCheckResult.OK:
+            if self._data['chat']['type'] != "private" and checkUserPermissionsInChat(self._main, self._data['chat']['id'], self._fromUserId) != UserPermissionsInChatCheckResult.OK:
                 di['text'] = '你没有权限操作。'
                 self._uri = None
             elif self._uri is None:
