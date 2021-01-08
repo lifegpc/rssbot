@@ -196,6 +196,9 @@ class main:
             ind = 0
             di['media'] = []
             for i in content['imgList']:
+                if ind % 9 == 0 and ind != 0:
+                    re = self._request('sendMediaGroup', 'post', json=di)
+                    di['media'] = []
                 di2 = {'type': 'photo', 'media': i}
                 if ind == 0:
                     di2['caption'] = text.tostr()
@@ -203,6 +206,9 @@ class main:
                 di['media'].append(di2)
                 ind = ind + 1
             for i in content['videoList']:
+                if ind % 9 == 0 and ind != 0:
+                    re = self._request('sendMediaGroup', 'post', json=di)
+                    di['media'] = []
                 di2 = {'type': 'video',
                        'media': i['src'], 'supports_streaming': True}
                 if 'poster' in i and i['poster'] is not None and i['poster'] != '':
