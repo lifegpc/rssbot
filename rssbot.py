@@ -31,6 +31,7 @@ from textc import textc
 from re import search, I
 from rsschecker import RSSCheckerThread
 from rsslist import getInlineKeyBoardForRSSList, InlineKeyBoardForRSSList
+from usercheck import checkUserPermissionsInChat, UserPermissionsInChatCheckResult
 
 
 def getMediaInfo(m: dict, config: RSSConfig = RSSConfig()) -> str:
@@ -498,6 +499,7 @@ class messageHandle(Thread):
             else:
                 di['text'] = '正在获取信息中……'
         elif self._botCommand == '/rsslist':
+            self._needCheckUser = False
             self._botCommandPara = self._getCommandlinePara()
             targetChatId = self._chatId
             for i in self._botCommandPara:
@@ -513,6 +515,7 @@ class messageHandle(Thread):
                     di['text'] = '获取列表失败。'
             else:
                 di['text'] = '正在确认操作者权限……'
+                self._needCheckUser = True
         re = self._main._request('sendMessage', 'post', json=di)
         if self._botCommand == '/rss' and self._uri is not None and re is not None and 'ok' in re and re['ok']:
             re = re['result']
@@ -544,6 +547,27 @@ class messageHandle(Thread):
                     self._hash, media)
                 self._main._rssMetaList.addRSSMeta(rssMetaInfo(
                     re['message_id'], chatId, media, p.itemList, self._hash))
+            self._main._request('editMessageText', 'post', json=di)
+        if self._botCommand == '/rsslist' and self._needCheckUser and re is not None and 'ok' in re and re['ok']:
+            messageInfo = re['result']
+            messageChatId = messageInfo['chat']['id']
+            messageId = messageInfo['message_id']
+            checkResult = checkUserPermissionsInChat(
+                self._main, targetChatId, self._fromUserId)
+            di = {'chat_id': messageChatId, 'message_id': messageId}
+            if checkResult == UserPermissionsInChatCheckResult.OK:
+                rssList = self._main._db.getRSSListByChatId(targetChatId)
+                di['text'] = '列表如下：'
+                di['reply_markup'] = getInlineKeyBoardForRSSList(
+                    targetChatId, rssList)
+            elif checkResult == UserPermissionsInChatCheckResult.GetChatInfoError:
+                di['text'] = '获取群/频道信息失败。'
+            elif checkResult == UserPermissionsInChatCheckResult.PrivateChat:
+                di['text'] = '该chat ID为私聊。'
+            elif checkResult == UserPermissionsInChatCheckResult.GetChatAdministratorsError:
+                di['text'] = '获取群/频道管理员列表失败。'
+            elif checkResult == UserPermissionsInChatCheckResult.NoPermissions:
+                di['text'] = '您没有权限进行操作。'
             self._main._request('editMessageText', 'post', json=di)
 
 
@@ -756,6 +780,60 @@ class callbackQueryHandle(Thread):
                     self._hashd, self._rssMeta.config)
                 self._main._request("editMessageText", "post", json=di)
                 self.answer()
+                return
+        elif self._loc == 1:
+            chatId = int(self._inputList[1])
+            self._inlineKeyBoardForRSSListCommand = InlineKeyBoardForRSSList(
+                int(self._inputList[2]))
+            if 'message' not in self._data:
+                self.answer('找不到信息。')
+                return
+            if self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.FirstPage:
+                di = {'chat_id': self._data['message']['chat']['id'],
+                      'message_id': self._data['message']['message_id']}
+                di['text'] = '列表如下：'
+                rssList = self._main._db.getRSSListByChatId(chatId)
+                di['reply_markup'] = getInlineKeyBoardForRSSList(
+                    chatId, rssList)
+                self._main._request("editMessageText", "post", json=di)
+                self.answer()
+                return
+            elif self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.LastPage:
+                di = {'chat_id': self._data['message']['chat']['id'],
+                      'message_id': self._data['message']['message_id']}
+                di['text'] = '列表如下：'
+                rssList = self._main._db.getRSSListByChatId(chatId)
+                di['reply_markup'] = getInlineKeyBoardForRSSList(
+                    chatId, rssList, lastPage=True)
+                self._main._request("editMessageText", "post", json=di)
+                self.answer()
+                return
+            elif self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.PrevPage:
+                di = {'chat_id': self._data['message']['chat']['id'],
+                      'message_id': self._data['message']['message_id']}
+                pageNum = int(self._inputList[3])
+                di['text'] = '列表如下：'
+                rssList = self._main._db.getRSSListByChatId(chatId)
+                di['reply_markup'] = getInlineKeyBoardForRSSList(
+                    chatId, rssList, pageNum-1)
+                self._main._request("editMessageText", "post", json=di)
+                self.answer()
+                return
+            elif self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.NextPage:
+                di = {'chat_id': self._data['message']['chat']['id'],
+                      'message_id': self._data['message']['message_id']}
+                pageNum = int(self._inputList[3])
+                di['text'] = '列表如下：'
+                rssList = self._main._db.getRSSListByChatId(chatId)
+                di['reply_markup'] = getInlineKeyBoardForRSSList(
+                    chatId, rssList, pageNum+1)
+                self._main._request("editMessageText", "post", json=di)
+                self.answer()
+                return
+            elif self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.Close:
+                di = {'chat_id': self._data['message']['chat']['id'],
+                      'message_id': self._data['message']['message_id']}
+                self._main._request("deleteMessage", "post", json=di)
                 return
         else:
             self.answer('未知的按钮。')

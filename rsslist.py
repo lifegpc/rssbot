@@ -29,12 +29,14 @@ class InlineKeyBoardForRSSList(Enum):
     Content = 5
 
 
-def getInlineKeyBoardForRSSList(chatId: int, RSSEntries: List[RSSEntry], page=1) -> dict:
+def getInlineKeyBoardForRSSList(chatId: int, RSSEntries: List[RSSEntry], page: int = 1, lastPage: bool = False) -> dict:
     d = []
     i = -1
     lineLimit = 7
     l = len(RSSEntries)
     pn = ceil(l / lineLimit)
+    if lastPage:
+        page = pn
     if l != 0:
         page = max(min(pn, page), 1)
         s = max(lineLimit * (page - 1), 0)
@@ -43,8 +45,8 @@ def getInlineKeyBoardForRSSList(chatId: int, RSSEntries: List[RSSEntry], page=1)
             rss = RSSEntries[s]
             d.append([])
             i = i + 1
-            d[i].append({'text': rss.title[0:20],
-                         'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.Content.value},{s}'})
+            d[i].append(
+                {'text': rss.title, 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.Content.value},{s}'})
             s = s + 1
         if pn != 1:
             d.append([])
