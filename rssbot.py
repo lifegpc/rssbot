@@ -27,7 +27,7 @@ from hashl import md5WithBase64
 from enum import Enum
 from rsstempdict import rssMetaInfo, rssMetaList
 from random import randrange
-from textc import textc
+from textc import textc, removeEmptyLine
 from re import search, I
 from rsschecker import RSSCheckerThread
 from rsslist import getInlineKeyBoardForRSSList, InlineKeyBoardForRSSList, getInlineKeyBoardForRSSInList, getTextContentForRSSInList
@@ -167,7 +167,7 @@ class main:
             text.addtotext(
                 f"""<a href="{content['link']}">{escape(content['link'])}</a>""")
         if config.show_content and 'description' in content and content['description'] is not None and content['description'] != '':
-            text.addtotext(content['description'])
+            text.addtotext(removeEmptyLine(content['description']))
 
         def getListCount(content: dict, key: str):
             if key not in content or content[key] is None:

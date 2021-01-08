@@ -36,3 +36,20 @@ def timeToStr(t: int) -> str:
     te = te + op + \
         f'{int(abs(timezone)/3600):02}:{int(abs(timezone)%3600/60):02}'
     return te
+
+
+def removeEmptyLine(s: str) -> str:
+    l = s.splitlines(False)
+    r = []
+    for v in l:
+        if v != '':
+            r.append(v)
+    f = True
+    z = ''
+    for v in r:
+        if f:
+            f = False
+            z = v
+        else:
+            z = z + '\n' + v
+    return z
