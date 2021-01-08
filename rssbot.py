@@ -585,6 +585,7 @@ class callbackQueryHandle(Thread):
 
     def run(self):
         self._callbackQueryId = self._data['id']
+        self._fromUserId = self._data['from']['id']
         l = self._data['data'].split(',')
         if len(l) < 3:
             self.answer('错误的按钮数据。')
@@ -788,6 +789,10 @@ class callbackQueryHandle(Thread):
             if 'message' not in self._data:
                 self.answer('找不到信息。')
                 return
+            if self._data['message']['chat']['type'] != 'private':
+                if checkUserPermissionsInChat(self._main, chatId, self._fromUserId) != UserPermissionsInChatCheckResult.OK:
+                    self.answer('您没有权限操作')
+                    return
             if self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.FirstPage:
                 di = {'chat_id': self._data['message']['chat']['id'],
                       'message_id': self._data['message']['message_id']}
