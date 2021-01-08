@@ -55,6 +55,7 @@ def removeEmptyLine(s: str) -> str:
             z = z + '\n' + v
     return z
 
+
 def decodeURI(s: str) -> str:
     s = s.replace('%25', '%2525')
     s = s.replace('%3A', '%253A')
