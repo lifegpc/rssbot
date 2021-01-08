@@ -241,14 +241,14 @@ class main:
             print('没有机器人token')
             return -1
         self._telegramBotApiServer = self._setting._telegramBotApiServer
-        if self._telegramBotApiServer != 'https://api.telegram.org':
-            self._request("logOut", "post",
-                          telegramBotApiServer="https://api.telegram.org")
         self._db = database(self)
         if not exists('settings.txt'):
             print('找不到settings.txt')
             return -1
         self._r = Session()
+        if self._telegramBotApiServer != 'https://api.telegram.org':
+            self._request("logOut", "post",
+                          telegramBotApiServer="https://api.telegram.org")
         self._me = self._request('getMe')
         self._rssMetaList = rssMetaList()
         print(self._me)
