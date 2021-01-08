@@ -27,7 +27,7 @@ from hashl import md5WithBase64
 from enum import Enum
 from rsstempdict import rssMetaInfo, rssMetaList
 from random import randrange
-from textc import textc, removeEmptyLine
+from textc import textc, removeEmptyLine, decodeURI
 from re import search, I
 from rsschecker import RSSCheckerThread
 from rsslist import getInlineKeyBoardForRSSList, InlineKeyBoardForRSSList, getInlineKeyBoardForRSSInList, getTextContentForRSSInList
@@ -492,7 +492,7 @@ class messageHandle(Thread):
             self._uri = None
             for i in self._botCommandPara:
                 if i.find('://') > -1:
-                    self._uri = i
+                    self._uri = decodeURI(i)
                     break
             if self._data['chat']['type'] != "private" and checkUserPermissionsInChat(self._main, self._data['chat']['id'], self._fromUserId) != UserPermissionsInChatCheckResult.OK:
                 di['text'] = '你没有权限操作。'
