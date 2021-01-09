@@ -40,6 +40,8 @@ class settings:
         self._maxRetryCount = int(d['maxRetryCount']) if 'maxRetryCount' in d and d['maxRetryCount'].isnumeric(
         ) and int(d['maxRetryCount']) >= 0 else 3
         self._telegramBotApiServer = d['telegramBotApiServer'] if 'telegramBotApiServer' in d else 'https://api.telegram.org'
+        self._downloadMediaFile = bool(int(d['downloadMediaFile'])) if 'downloadMediaFile' in d and d['downloadMediaFile'].isnumeric() else False
+        self._sendFileURLScheme = bool(int(d['sendFileURLScheme'])) if 'sendFileURLScheme' in d and d['sendFileURLScheme'].isnumeric() else False
 
 
 class commandline:

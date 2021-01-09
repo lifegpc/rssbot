@@ -64,6 +64,7 @@ class RSSCheckerThread(Thread):
         if self._main._commandLine._rebuildHashlist and self._main._commandLine._exitAfterRebuild:
             _exit(0)
         self._main._commandLine._rebuildHashlist = False
+        self._main._tempFileEntries.clear()
 
     def __init__(self, m):
         Thread.__init__(self)

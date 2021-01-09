@@ -24,7 +24,7 @@ from typing import List
 from rssparser import RSSParser
 from html import escape
 from hashl import md5WithBase64
-from enum import Enum
+from enum import Enum, unique
 from rsstempdict import rssMetaInfo, rssMetaList
 from random import randrange
 from textc import textc, removeEmptyLine, decodeURI
@@ -33,6 +33,8 @@ from rsschecker import RSSCheckerThread
 from rsslist import getInlineKeyBoardForRSSList, InlineKeyBoardForRSSList, getInlineKeyBoardForRSSInList, getTextContentForRSSInList, getInlineKeyBoardForRSSUnsubscribeInList, getTextContentForRSSUnsubscribeInList, getInlineKeyBoardForRSSSettingsInList
 from usercheck import checkUserPermissionsInChat, UserPermissionsInChatCheckResult
 import sys
+from fileEntry import FileEntries, remove
+from dictdeal import json2data
 
 
 def getMediaInfo(m: dict, config: RSSConfig = RSSConfig()) -> str:
@@ -62,6 +64,7 @@ def getMediaInfo(m: dict, config: RSSConfig = RSSConfig()) -> str:
     return s
 
 
+@unique
 class InlineKeyBoardCallBack(Enum):
     Subscribe = 0
     SendPriview = 1
@@ -138,6 +141,9 @@ class main:
 
     def _request(self, methodName: str, HTTPMethod: str = 'get', data: dict = None, json: dict = None, files: dict = None, returnType: str = 'json', telegramBotApiServer: str = None):
         try:
+            if json is not None and files is not None:
+                data = json2data(json)
+                json = None
             r = self._r.request(
                 HTTPMethod, f'{self._telegramBotApiServer if telegramBotApiServer is None else telegramBotApiServer}/bot{self._setting._token}/{methodName}', data=data, json=json, files=files)
             if r.status_code != 200:
@@ -183,24 +189,85 @@ class main:
         elif getListCount(content, 'imgList') == 1 and getListCount(content, 'videoList') == 0:
             di['caption'] = text.tostr()
             di['parse_mode'] = 'HTML'
-            di['photo'] = content['imgList'][0]
-            re = self._request('sendPhoto', 'post', json=di)
+            if not self._setting._downloadMediaFile:
+                di['photo'] = content['imgList'][0]
+                re = self._request('sendPhoto', 'post', json=di)
+            else:
+                fileEntry = self._tempFileEntries.add(content['imgList'][0])
+                if not fileEntry.ok:
+                    return None
+                if self._setting._sendFileURLScheme:
+                    di['photo'] = fileEntry._localURI
+                    re = self._request('sendPhoto', 'post', json=di)
+                else:
+                    fileEntry.open()
+                    re = self._request('sendPhoto', 'post', json=di, files={
+                                       'photo': (fileEntry._fullfn, fileEntry._f)})
         elif getListCount(content, 'imgList') == 0 and getListCount(content, 'videoList') == 1:
             di['caption'] = text.tostr()
             di['parse_mode'] = 'HTML'
-            di['video'] = content['videoList'][0]['src']
+            if self._setting._downloadMediaFile and not self._setting._sendFileURLScheme:
+                di2 = {}
+            if not self._setting._downloadMediaFile:
+                di['video'] = content['videoList'][0]['src']
+            else:
+                fileEntry = self._tempFileEntries.add(
+                    content['videoList'][0]['src'])
+                if not fileEntry.ok:
+                    return None
+                if self._setting._sendFileURLScheme:
+                    di['video'] = fileEntry._localURI
+                else:
+                    fileEntry.open()
+                    di2['video'] = (fileEntry._fullfn, fileEntry._f)
             if 'poster' in content['videoList'][0] and content['videoList'][0]['poster'] is not None and content['videoList'][0]['poster'] != '':
-                di['thumb'] = content['videoList'][0]['poster']
+                if not self._setting._downloadMediaFile:
+                    di['thumb'] = content['videoList'][0]['poster']
+                else:
+                    fileEntry = self._tempFileEntries.add(
+                        content['videoList'][0]['poster'])
+                    if not fileEntry.ok:
+                        return None
+                    if self._setting._sendFileURLScheme:
+                        di['thumb'] = fileEntry._localURI
+                    else:
+                        fileEntry.open()
+                        di2['thumb'] = (fileEntry._fullfn, fileEntry._f)
             di['supports_streaming'] = True
-            re = self._request('sendVideo', 'post', json=di)
+            if not self._setting._downloadMediaFile or self._setting._sendFileURLScheme:
+                re = self._request('sendVideo', 'post', json=di)
+            else:
+                re = self._request('sendVideo', 'post', json=di, files=di2)
         else:
             ind = 0
+            if self._setting._downloadMediaFile and not self._setting._sendFileURLScheme:
+                ind2 = 0
+                di3 = {}
             di['media'] = []
             for i in content['imgList']:
                 if ind % 9 == 0 and ind != 0:
-                    re = self._request('sendMediaGroup', 'post', json=di)
-                    di['media'] = []
-                di2 = {'type': 'photo', 'media': i}
+                    if not self._setting._downloadMediaFile or self._setting._sendFileURLScheme:
+                        re = self._request('sendMediaGroup', 'post', json=di)
+                        di['media'] = []
+                    else:
+                        re = self._request(
+                            'sendMediaGroup', 'post', json=di, files=di3)
+                        di['media'] = []
+                        di3 = {}
+                di2 = {'type': 'photo'}
+                if not self._setting._downloadMediaFile:
+                    di2['media'] = i
+                else:
+                    fileEntry = self._tempFileEntries.add(i)
+                    if not fileEntry.ok:
+                        return None
+                    if self._setting._sendFileURLScheme:
+                        di2['media'] = fileEntry._localURI
+                    else:
+                        fileEntry.open()
+                        di2['media'] = f'attach://file{ind2}'
+                        di3[f'file{ind2}'] = (fileEntry._fullfn, fileEntry._f)
+                        ind2 = ind2 + 1
                 if ind == 0:
                     di2['caption'] = text.tostr()
                     di2['parse_mode'] = 'HTML'
@@ -208,18 +275,53 @@ class main:
                 ind = ind + 1
             for i in content['videoList']:
                 if ind % 9 == 0 and ind != 0:
-                    re = self._request('sendMediaGroup', 'post', json=di)
-                    di['media'] = []
-                di2 = {'type': 'video',
-                       'media': i['src'], 'supports_streaming': True}
+                    if not self._setting._downloadMediaFile or self._setting._sendFileURLScheme:
+                        re = self._request('sendMediaGroup', 'post', json=di)
+                        di['media'] = []
+                    else:
+                        re = self._request(
+                            'sendMediaGroup', 'post', json=di, files=di3)
+                        di['media'] = []
+                        di3 = {}
+                di2 = {'type': 'video', 'supports_streaming': True}
+                if not self._setting._downloadMediaFile:
+                    di2['media'] = i['src']
+                else:
+                    fileEntry = self._tempFileEntries.add(i['src'])
+                    if not fileEntry.ok:
+                        return None
+                    if self._setting._sendFileURLScheme:
+                        di2['media'] = fileEntry._localURI
+                    else:
+                        fileEntry.open()
+                        di2['media'] = f'attach://file{ind2}'
+                        di3[f'file{ind2}'] = (fileEntry._fullfn, fileEntry._f)
+                        ind2 = ind2 + 1
                 if 'poster' in i and i['poster'] is not None and i['poster'] != '':
-                    di2['thumb'] = i['poster']
+                    if not self._setting._downloadMediaFile:
+                        di2['thumb'] = i['poster']
+                    else:
+                        fileEntry = self._tempFileEntries.add(i['poster'])
+                        if not fileEntry.ok:
+                            return None
+                        if self._setting._sendFileURLScheme:
+                            di2['thumb'] = fileEntry._localURI
+                        else:
+                            fileEntry.open()
+                            di2['thumb'] = f'attach://file{ind2}'
+                            di3[f'file{ind2}'] = (
+                                fileEntry._fullfn, fileEntry._f)
+                            ind2 = ind2 + 1
                 if ind == 0:
                     di2['caption'] = text.tostr()
                     di2['parse_mode'] = 'HTML'
                 di['media'].append(di2)
                 ind = ind + 1
-            re = self._request('sendMediaGroup', 'post', json=di)
+            if not self._setting._downloadMediaFile or self._setting._sendFileURLScheme:
+                re = self._request('sendMediaGroup', 'post', json=di)
+            else:
+                re = self._request('sendMediaGroup', 'post',
+                                   json=di, files=di3)
         if re is not None and 'ok' in re and re['ok']:
             return True
         return False
@@ -259,6 +361,8 @@ class main:
         if self._telegramBotApiServer != 'https://api.telegram.org':
             self._request("logOut", "post",
                           telegramBotApiServer="https://api.telegram.org")
+        remove('Temp')
+        self._tempFileEntries = FileEntries()
         self._me = self._request('getMe')
         self._rssMetaList = rssMetaList()
         print(self._me)
