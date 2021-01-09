@@ -802,6 +802,7 @@ class callbackQueryHandle(Thread):
                 if suc:
                     self.answer(f'第{ran}条发送成功！')
                 else:
+                    print(mes)
                     self.answer(f'第{ran}条发送失败！{mes}')
                 return
             elif self._userId is not None and self._inlineKeyBoardCommand == InlineKeyBoardCallBack.ModifyChatId:
