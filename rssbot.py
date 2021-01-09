@@ -159,6 +159,10 @@ class main:
             return None
 
     def _sendMessage(self, chatId: int, meta: dict, content: dict, config: RSSConfig, returnError: bool = False):
+        with self._tempFileEntries._value_lock:
+            return self.__sendMessage(chatId, meta, content, config, returnError)
+
+    def __sendMessage(self, chatId: int, meta: dict, content: dict, config: RSSConfig, returnError: bool = False):
         di = {}
         di['chat_id'] = chatId
         text = textc()

@@ -20,6 +20,7 @@ from random import randint
 from requests import get
 from os import remove as removeFile, mkdir, listdir, removedirs
 from typing import List
+from threading import Lock
 
 
 def remove(s: str):
@@ -47,10 +48,10 @@ class FileEntry:
         self._url = url
         self._ext = splitext(urlsplit(url).path)[1]
         if self._ext == '':
-            self._ext = 'temp'
+            self._ext = '.temp'
         self._fn = f"{time_ns()}{randint(0, 9999)}"
-        self._fullfn = f"{self._fn}.{self._ext}"
-        self._abspath = abspath(f'Temp/{self._fn}.{self._ext}')
+        self._fullfn = f"{self._fn}{self._ext}"
+        self._abspath = abspath(f'Temp/{self._fn}{self._ext}')
         try:
             self._r = get(url, stream=True)
             if self._r.ok:
@@ -93,27 +94,30 @@ class FileEntry:
 class FileEntries:
     def __init__(self):
         self.__list = []
+        self._value_lock = Lock()
 
     def add(self, url: str) -> FileEntry:
-        if self.has(url):
-            return self.get(url)
-        fileEntry = FileEntry(url)
-        if fileEntry.ok and fileEntry._fileExist:
-            self.__list.append(fileEntry)
-            return fileEntry
-        return None
+        with self._value_lock:
+            if self.has(url):
+                return self.get(url)
+            fileEntry = FileEntry(url)
+            if fileEntry.ok and fileEntry._fileExist:
+                self.__list.append(fileEntry)
+                return fileEntry
+            return None
 
     def clear(self):
-        for v in self.__list:
-            fileEntry: FileEntry = v
-            fileEntry.delete()
-        i = 0
-        while i < len(self.__list):
-            fileEntry = self.__list[i]
-            if not fileEntry._fileExist:
-                self.__list.remove(fileEntry)
-                i = i - 1
-            i = i + 1
+        with self._value_lock:
+            for v in self.__list:
+                fileEntry: FileEntry = v
+                fileEntry.delete()
+            i = 0
+            while i < len(self.__list):
+                fileEntry = self.__list[i]
+                if not fileEntry._fileExist:
+                    self.__list.remove(fileEntry)
+                    i = i - 1
+                i = i + 1
 
     def get(self, url: str) -> FileEntry:
         for v in self.__list:
