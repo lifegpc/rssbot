@@ -146,7 +146,7 @@ class main:
                 json = None
             r = self._r.request(
                 HTTPMethod, f'{self._telegramBotApiServer if telegramBotApiServer is None else telegramBotApiServer}/bot{self._setting._token}/{methodName}', data=data, json=json, files=files)
-            if r.status_code != 200:
+            if r.status_code not in [200, 400]:
                 return None
             if returnType == 'json':
                 return r.json()
@@ -158,7 +158,7 @@ class main:
             print(format_exc())
             return None
 
-    def _sendMessage(self, chatId: int, meta: dict, content: dict, config: RSSConfig):
+    def _sendMessage(self, chatId: int, meta: dict, content: dict, config: RSSConfig, returnError: bool = False):
         di = {}
         di['chat_id'] = chatId
         text = textc()
@@ -227,7 +227,7 @@ class main:
                     fileEntry = self._tempFileEntries.add(
                         content['videoList'][0]['poster'])
                     if not fileEntry.ok:
-                        return None
+                        return False
                     if self._setting._sendFileURLScheme:
                         di['thumb'] = fileEntry._localURI
                     else:
@@ -323,7 +323,13 @@ class main:
                 re = self._request('sendMediaGroup', 'post',
                                    json=di, files=di3)
         if re is not None and 'ok' in re and re['ok']:
+            if returnError:
+                return True, ''
             return True
+        if returnError and re is not None and 'description' in re:
+            return False, re['description']
+        elif returnError:
+            return False, ''
         return False
 
     def _updateLoop(self):
@@ -791,12 +797,12 @@ class callbackQueryHandle(Thread):
                     self.answer('列表为空。')
                     return
                 ran = randrange(0, len(self._rssMeta.itemList))
-                suc = self._main._sendMessage(
-                    chatId, self._rssMeta.meta, self._rssMeta.itemList[ran], self._rssMeta.config)
+                suc, mes = self._main._sendMessage(
+                    chatId, self._rssMeta.meta, self._rssMeta.itemList[ran], self._rssMeta.config, True)
                 if suc:
                     self.answer(f'第{ran}条发送成功！')
                 else:
-                    self.answer(f'第{ran}条发送失败！')
+                    self.answer(f'第{ran}条发送失败！{mes}')
                 return
             elif self._userId is not None and self._inlineKeyBoardCommand == InlineKeyBoardCallBack.ModifyChatId:
                 self._main._db.setUserStatus(
