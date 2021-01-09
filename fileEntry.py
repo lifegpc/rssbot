@@ -96,7 +96,7 @@ class FileEntries:
         self.__list = []
         self._value_lock = Lock()
 
-    def add(self, url: str) -> FileEntry:\
+    def add(self, url: str) -> FileEntry:
         if self.has(url):
             return self.get(url)
         fileEntry = FileEntry(url)
