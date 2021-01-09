@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from database import database, userStatus, RSSConfig
-from RSSEntry import HashEntry, HashEntries, calHash
+from RSSEntry import HashEntry, HashEntries, calHash, ChatEntry
 from os.path import exists
 from readset import settings, commandline
 from requests import Session
@@ -30,7 +30,7 @@ from random import randrange
 from textc import textc, removeEmptyLine, decodeURI
 from re import search, I
 from rsschecker import RSSCheckerThread
-from rsslist import getInlineKeyBoardForRSSList, InlineKeyBoardForRSSList, getInlineKeyBoardForRSSInList, getTextContentForRSSInList, getInlineKeyBoardForRSSUnsubscribeInList, getTextContentForRSSUnsubscribeInList
+from rsslist import getInlineKeyBoardForRSSList, InlineKeyBoardForRSSList, getInlineKeyBoardForRSSInList, getTextContentForRSSInList, getInlineKeyBoardForRSSUnsubscribeInList, getTextContentForRSSUnsubscribeInList, getInlineKeyBoardForRSSSettingsInList
 from usercheck import checkUserPermissionsInChat, UserPermissionsInChatCheckResult
 import sys
 
@@ -866,7 +866,7 @@ class callbackQueryHandle(Thread):
                       'message_id': self._data['message']['message_id']}
                 self._main._request("deleteMessage", "post", json=di)
                 return
-            elif self._inlineKeyBoardForRSSListCommand in [InlineKeyBoardForRSSList.Content, InlineKeyBoardForRSSList.CancleUnsubscribe]:
+            elif self._inlineKeyBoardForRSSListCommand in [InlineKeyBoardForRSSList.Content, InlineKeyBoardForRSSList.CancleUnsubscribe, InlineKeyBoardForRSSList.BackToContentPage]:
                 di = {'chat_id': self._data['message']['chat']['id'],
                       'message_id': self._data['message']['message_id']}
                 rssList = self._main._db.getRSSListByChatId(chatId)
@@ -924,6 +924,51 @@ class callbackQueryHandle(Thread):
                 di['text'] = '列表如下：'
                 di['reply_markup'] = getInlineKeyBoardForRSSList(
                     chatId, rssList, itemIndex=ind)
+                self._main._request("editMessageText", "post", json=di)
+                return
+            elif self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.SettingsPage:
+                di = {'chat_id': self._data['message']['chat']['id'],
+                      'message_id': self._data['message']['message_id']}
+                rssList = self._main._db.getRSSListByChatId(chatId)
+                ind = int(self._inputList[3])
+                ind = max(min(ind, len(rssList)), 0)
+                di['text'] = getTextContentForRSSInList(rssList[ind])
+                di['parse_mode'] = 'HTML'
+                di['reply_markup'] = getInlineKeyBoardForRSSSettingsInList(
+                    chatId, rssList[ind], ind)
+                self._main._request("editMessageText", "post", json=di)
+                self.answer()
+                return
+            elif self._inlineKeyBoardForRSSListCommand in [InlineKeyBoardForRSSList.DisableWebPagePreview, InlineKeyBoardForRSSList.ShowRSSTitle, InlineKeyBoardForRSSList.ShowContentTitle, InlineKeyBoardForRSSList.ShowContent, InlineKeyBoardForRSSList.SendMedia]:
+                di = {'chat_id': self._data['message']['chat']['id'],
+                      'message_id': self._data['message']['message_id']}
+                rssList = self._main._db.getRSSListByChatId(chatId)
+                ind = int(self._inputList[3])
+                ind = max(min(ind, len(rssList)), 0)
+                rssEntry = rssList[ind]
+                chatEntry: ChatEntry = rssEntry.chatList[0]
+                config = chatEntry.config
+                if self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.DisableWebPagePreview:
+                    config.disable_web_page_preview = not config.disable_web_page_preview
+                elif self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.ShowRSSTitle:
+                    config.show_RSS_title = not config.show_RSS_title
+                elif self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.ShowContentTitle:
+                    config.show_Content_title = not config.show_Content_title
+                elif self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.ShowContent:
+                    config.show_content = not config.show_content
+                elif self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.SendMedia:
+                    config.send_media = not config.send_media
+                updated = self._main._db.updateChatConfig(chatEntry)
+                if updated:
+                    self.answer('修改设置成功')
+                else:
+                    self.answer('修改设置失败')
+                rssList = self._main._db.getRSSListByChatId(chatId)
+                ind = max(min(ind, len(rssList)), 0)
+                di['text'] = getTextContentForRSSInList(rssList[ind])
+                di['parse_mode'] = 'HTML'
+                di['reply_markup'] = getInlineKeyBoardForRSSSettingsInList(
+                    chatId, rssList[ind], ind)
                 self._main._request("editMessageText", "post", json=di)
                 return
         else:

@@ -33,6 +33,13 @@ class InlineKeyBoardForRSSList(Enum):
     Unsubscribe = 7
     ConfirmUnsubscribe = 8
     CancleUnsubscribe = 9
+    SettingsPage = 10
+    BackToContentPage = 11
+    DisableWebPagePreview = 12
+    ShowRSSTitle = 13
+    ShowContentTitle = 14
+    ShowContent = 15
+    SendMedia = 16
 
 
 def getTextContentForRSSInList(rssEntry: RSSEntry) -> str:
@@ -114,6 +121,10 @@ def getInlineKeyBoardForRSSInList(chatId: int, rssEntry: RSSEntry, index: int) -
     d.append([])
     i = i + 1
     d[i].append(
+        {'text': '设置', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.SettingsPage.value},{index}'})
+    d.append([])
+    i = i + 1
+    d[i].append(
         {'text': '返回', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.BackToList.value},{index}'})
     return {'inline_keyboard': d}
 
@@ -127,4 +138,40 @@ def getInlineKeyBoardForRSSUnsubscribeInList(chatId: int, rssEntry: RSSEntry, in
         {'text': '是', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.ConfirmUnsubscribe.value},{index}'})
     d[i].append(
         {'text': '否', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.CancleUnsubscribe.value},{index}'})
+    return {'inline_keyboard': d}
+
+
+def getInlineKeyBoardForRSSSettingsInList(chatId: int, rssEntry: RSSEntry, index: int, page: int = 1) -> dict:
+    d = []
+    i = -1
+    if page != 1:
+        page = 1
+    chatInfo: ChatEntry = rssEntry.chatList[0]
+    config = chatInfo.config
+    if page == 1:
+        d.append([])
+        i = i + 1
+        temp = '启用预览' if config.disable_web_page_preview else '禁用预览'
+        d[i].append(
+            {'text': temp, 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.DisableWebPagePreview.value},{index}'})
+        temp = '隐藏RSS标题' if config.show_RSS_title else '显示RSS标题'
+        d[i].append(
+            {'text': temp, 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.ShowRSSTitle.value},{index}'})
+        d.append([])
+        i = i + 1
+        temp = '隐藏内容标题' if config.show_Content_title else '显示内容标题'
+        d[i].append(
+            {'text': temp, 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.ShowContentTitle.value},{index}'})
+        temp = '隐藏内容' if config.show_content else '显示内容'
+        d[i].append(
+            {'text': temp, 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.ShowContent.value},{index}'})
+        d.append([])
+        i = i + 1
+        temp = '禁用发送媒体' if config.send_media else '启用发送媒体'
+        d[i].append(
+            {'text': temp, 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.SendMedia.value},{index}'})
+    d.append([])
+    i = i + 1
+    d[i].append(
+        {'text': '返回', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.BackToContentPage.value},{index}'})
     return {'inline_keyboard': d}

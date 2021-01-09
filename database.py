@@ -202,6 +202,7 @@ PRIMARY KEY (hash)
             try:
                 self._db.execute(
                     f"DELETE FROM chatList WHERE chatId={chatId} AND id='{id}'")
+                self._db.commit()
                 return True
             except:
                 return False
@@ -230,6 +231,24 @@ PRIMARY KEY (hash)
                 else:
                     cur = self._db.execute(
                         f'INSERT INTO userStatus VALUES ({userId}, {status.value}, "{hashd}");')
+                self._db.commit()
+                return True
+            except:
+                return False
+
+    def updateChatConfig(self, chatEntry: ChatEntry) -> bool:
+        with self._value_lock:
+            try:
+                cur = self._db.execute(
+                    f"SELECT * FROM chatList WHERE chatId={chatEntry.chatId} AND id='{chatEntry.id}'")
+                has_data = False
+                for i in cur:  # pylint: disable=unused-variable
+                    has_data = True
+                    break
+                if not has_data:
+                    return False
+                self._db.execute(
+                    f"UPDATE chatList SET config='{dealtext(chatEntry.config.toJson())}' WHERE chatId={chatEntry.chatId} AND id='{chatEntry.id}'")
                 self._db.commit()
                 return True
             except:
