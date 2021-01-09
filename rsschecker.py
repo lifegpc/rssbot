@@ -18,6 +18,7 @@ from time import sleep, time
 from RSSEntry import RSSEntry, calHash, ChatEntry, HashEntries
 from traceback import format_exc
 from rssparser import RSSParser
+from os import _exit
 
 
 class RSSCheckerThread(Thread):
@@ -61,7 +62,7 @@ class RSSCheckerThread(Thread):
                 except:
                     print(format_exc())
         if self._main._commandLine._rebuildHashlist and self._main._commandLine._exitAfterRebuild:
-            exit(0)
+            _exit(0)
         self._main._commandLine._rebuildHashlist = False
 
     def __init__(self, m):
