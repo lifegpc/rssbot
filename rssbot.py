@@ -804,6 +804,8 @@ class callbackQueryHandle(Thread):
                 else:
                     print(mes)
                     self.answer(f'第{ran}条发送失败！{mes}')
+                    self._main._request("sendMessage", "post", {
+                                        "chat_id": chatId, "text": f'第{ran}条发送失败！{mes}'})
                 return
             elif self._userId is not None and self._inlineKeyBoardCommand == InlineKeyBoardCallBack.ModifyChatId:
                 self._main._db.setUserStatus(
