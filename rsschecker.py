@@ -60,6 +60,8 @@ class RSSCheckerThread(Thread):
                         rss.title, rss.url, updateTime, rss.hashList, p.ttl)
                 except:
                     print(format_exc())
+        if self._main._commandLine._rebuildHashlist and self._main._commandLine._exitAfterRebuild:
+            exit(0)
         self._main._commandLine._rebuildHashlist = False
 
     def __init__(self, m):

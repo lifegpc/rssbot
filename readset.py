@@ -45,11 +45,15 @@ class settings:
 class commandline:
     def __init__(self, commandline: List[str] = None):
         self._rebuildHashlist = False
+        self._exitAfterRebuild = False
         if commandline is not None:
             self.parse(commandline)
 
     def parse(self, commandline: List[str]):
-        cml = getopt(commandline, '', ['rebuild-hashlist'])
+        cml = getopt(commandline, '', [
+                     'rebuild-hashlist', 'exit-after-rebuild'])
         for i in cml[0]:
             if i[0] == '--rebuild-hashlist':
                 self._rebuildHashlist = True
+            if i[0] == '--exit-after-rebuild':
+                self._exitAfterRebuild = True
