@@ -197,6 +197,15 @@ PRIMARY KEY (hash)
                 pass
             return userStatus.normalStatus, ''
 
+    def removeItemInChatList(self, chatId: int, id: str):
+        with self._value_lock:
+            try:
+                self._db.execute(
+                    f"DELETE FROM chatList WHERE chatId={chatId} AND id='{id}'")
+                return True
+            except:
+                return False
+
     def setUserStatus(self, userId: int, status: userStatus = userStatus.normalStatus, hashd: str = '') -> bool:
         with self._value_lock:
             try:

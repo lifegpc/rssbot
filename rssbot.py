@@ -30,7 +30,7 @@ from random import randrange
 from textc import textc, removeEmptyLine, decodeURI
 from re import search, I
 from rsschecker import RSSCheckerThread
-from rsslist import getInlineKeyBoardForRSSList, InlineKeyBoardForRSSList, getInlineKeyBoardForRSSInList, getTextContentForRSSInList
+from rsslist import getInlineKeyBoardForRSSList, InlineKeyBoardForRSSList, getInlineKeyBoardForRSSInList, getTextContentForRSSInList, getInlineKeyBoardForRSSUnsubscribeInList, getTextContentForRSSUnsubscribeInList
 from usercheck import checkUserPermissionsInChat, UserPermissionsInChatCheckResult
 import sys
 
@@ -866,13 +866,12 @@ class callbackQueryHandle(Thread):
                       'message_id': self._data['message']['message_id']}
                 self._main._request("deleteMessage", "post", json=di)
                 return
-            elif self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.Content:
+            elif self._inlineKeyBoardForRSSListCommand in [InlineKeyBoardForRSSList.Content, InlineKeyBoardForRSSList.CancleUnsubscribe]:
                 di = {'chat_id': self._data['message']['chat']['id'],
                       'message_id': self._data['message']['message_id']}
                 rssList = self._main._db.getRSSListByChatId(chatId)
                 ind = int(self._inputList[3])
-                if ind >= len(rssList):
-                    ind = len(rssList) - 1
+                ind = max(min(ind, len(rssList)), 0)
                 di['text'] = getTextContentForRSSInList(rssList[ind])
                 di['parse_mode'] = 'HTML'
                 di['reply_markup'] = getInlineKeyBoardForRSSInList(
@@ -890,6 +889,42 @@ class callbackQueryHandle(Thread):
                     chatId, rssList, itemIndex=ind)
                 self._main._request("editMessageText", "post", json=di)
                 self.answer()
+                return
+            elif self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.Unsubscribe:
+                di = {'chat_id': self._data['message']['chat']['id'],
+                      'message_id': self._data['message']['message_id']}
+                rssList = self._main._db.getRSSListByChatId(chatId)
+                ind = int(self._inputList[3])
+                ind = max(min(ind, len(rssList)), 0)
+                di['text'] = getTextContentForRSSUnsubscribeInList(
+                    rssList[ind])
+                di['parse_mode'] = 'HTML'
+                di['reply_markup'] = getInlineKeyBoardForRSSUnsubscribeInList(
+                    chatId, rssList[ind], ind)
+                self._main._request("editMessageText", "post", json=di)
+                self.answer()
+                return
+            elif self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.ConfirmUnsubscribe:
+                di = {'chat_id': self._data['message']['chat']['id'],
+                      'message_id': self._data['message']['message_id']}
+                rssList = self._main._db.getRSSListByChatId(chatId)
+                ind = int(self._inputList[3])
+                if ind >= len(rssList) or ind < 0:
+                    self.answer('取消订阅失败：无效的索引。')
+                else:
+                    unsubscribed = self._main._db.removeItemInChatList(
+                        chatId, rssList[ind].id)
+                    if unsubscribed:
+                        self.answer('取消订阅成功。')
+                        ind = ind - 1
+                    else:
+                        self.answer('取消订阅失败：数据库删除失败。')
+                rssList = self._main._db.getRSSListByChatId(chatId)
+                ind = max(min(ind, len(rssList)), 0)
+                di['text'] = '列表如下：'
+                di['reply_markup'] = getInlineKeyBoardForRSSList(
+                    chatId, rssList, itemIndex=ind)
+                self._main._request("editMessageText", "post", json=di)
                 return
         else:
             self.answer('未知的按钮。')

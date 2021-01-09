@@ -116,3 +116,15 @@ def getInlineKeyBoardForRSSInList(chatId: int, rssEntry: RSSEntry, index: int) -
     d[i].append(
         {'text': '返回', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.BackToList.value},{index}'})
     return {'inline_keyboard': d}
+
+
+def getInlineKeyBoardForRSSUnsubscribeInList(chatId: int, rssEntry: RSSEntry, index: int) -> dict:
+    d = []
+    i = -1
+    d.append([])
+    i = i + 1
+    d[i].append(
+        {'text': '是', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.ConfirmUnsubscribe.value},{index}'})
+    d[i].append(
+        {'text': '否', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.CancleUnsubscribe.value},{index}'})
+    return {'inline_keyboard': d}
