@@ -96,15 +96,14 @@ class FileEntries:
         self.__list = []
         self._value_lock = Lock()
 
-    def add(self, url: str) -> FileEntry:
-        with self._value_lock:
-            if self.has(url):
-                return self.get(url)
-            fileEntry = FileEntry(url)
-            if fileEntry.ok and fileEntry._fileExist:
-                self.__list.append(fileEntry)
-                return fileEntry
-            return None
+    def add(self, url: str) -> FileEntry:\
+        if self.has(url):
+            return self.get(url)
+        fileEntry = FileEntry(url)
+        if fileEntry.ok and fileEntry._fileExist:
+            self.__list.append(fileEntry)
+            return fileEntry
+        return None
 
     def clear(self):
         with self._value_lock:
