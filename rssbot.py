@@ -16,7 +16,7 @@
 from database import database, userStatus, RSSConfig
 from RSSEntry import HashEntry, HashEntries, calHash
 from os.path import exists
-from readset import settings
+from readset import settings, commandline
 from requests import Session
 from traceback import format_exc
 from threading import Thread
@@ -32,6 +32,7 @@ from re import search, I
 from rsschecker import RSSCheckerThread
 from rsslist import getInlineKeyBoardForRSSList, InlineKeyBoardForRSSList, getInlineKeyBoardForRSSInList, getTextContentForRSSInList
 from usercheck import checkUserPermissionsInChat, UserPermissionsInChatCheckResult
+import sys
 
 
 def getMediaInfo(m: dict, config: RSSConfig = RSSConfig()) -> str:
@@ -246,6 +247,9 @@ class main:
         if self._setting._token is None:
             print('没有机器人token')
             return -1
+        self._commandLine = commandline()
+        if len(sys.argv) > 1:
+            self._commandLine.parse(sys.argv[1:])
         self._telegramBotApiServer = self._setting._telegramBotApiServer
         self._db = database(self)
         if not exists('settings.txt'):

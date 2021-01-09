@@ -49,7 +49,17 @@ def calHash(url: dict, item: dict) -> HashEntry:
         hasht = hasht + item['title']
     if 'link' in item and item['link'] is not None:
         hasht = hasht + item['link']
-    if 'description' in item and item['description'] is not None:
+    matched = False
+    if 'published' in item and item['published'] is not None:
+        hasht = hasht + item['published']
+        matched = True
+    if 'updated' in item and item['updated'] is not None:
+        hasht = hasht + item['updated']
+        matched = True
+    if 'pubDate' in item and item['pubDate'] is not None:
+        hasht = hasht + item['pubDate']
+        matched = True
+    if not matched and 'description' in item and item['description'] is not None:
         hasht = hasht + item['description']
     hashed = sha256WithBase64(hasht)
     return HashEntry(id=hashd, hash=hashed)

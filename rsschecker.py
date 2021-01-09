@@ -15,7 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from threading import Thread
 from time import sleep, time
-from RSSEntry import RSSEntry, calHash, ChatEntry
+from RSSEntry import RSSEntry, calHash, ChatEntry, HashEntries
 from traceback import format_exc
 from rssparser import RSSParser
 
@@ -23,7 +23,7 @@ from rssparser import RSSParser
 class RSSCheckerThread(Thread):
     def __loop(self):
         for rss in self._main._db.getAllRSSList():
-            if self.__needUpdate(rss):
+            if self.__needUpdate(rss) or self._main._commandLine._rebuildHashlist:
                 try:
                     p = RSSParser()
                     p.parse(rss.url)
@@ -32,8 +32,14 @@ class RSSCheckerThread(Thread):
                         meta = p.m
                         itemList = p.itemList[:self._main._setting._maxCount]
                         itemList.reverse()
+                        if self._main._commandLine._rebuildHashlist:
+                            rss.hashList = HashEntries(
+                                self._main._setting._maxCount)
                         for item in itemList:
                             hashEntry = calHash(rss.url, item)
+                            if self._main._commandLine._rebuildHashlist:
+                                rss.hashList.add(hashEntry)
+                                continue
                             if not rss.hashList.has(hashEntry):
                                 rss.hashList.add(hashEntry)
                                 for info in rss.chatList:
@@ -54,6 +60,7 @@ class RSSCheckerThread(Thread):
                         rss.title, rss.url, updateTime, rss.hashList, p.ttl)
                 except:
                     print(format_exc())
+        self._main._commandLine._rebuildHashlist = False
 
     def __init__(self, m):
         Thread.__init__(self)

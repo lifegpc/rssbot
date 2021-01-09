@@ -13,6 +13,10 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+from typing import List
+from getopt import getopt
+
+
 class settings:
     def __init__(self, fn: str = None):
         if fn is not None:
@@ -33,5 +37,19 @@ class settings:
         ) and int(d['minTTL']) >= 1 else 5
         self._maxTTL = int(d['maxTTL']) if 'maxTTL' in d and d['maxTTL'].isnumeric(
         ) and int(d['maxTTL']) >= self._minTTL else max(1440, self._minTTL)
-        self._maxRetryCount = int(d['maxRetryCount']) if 'maxRetryCount' in d and d['maxRetryCount'].isnumeric() and int(d['maxRetryCount']) >= 0 else 3
+        self._maxRetryCount = int(d['maxRetryCount']) if 'maxRetryCount' in d and d['maxRetryCount'].isnumeric(
+        ) and int(d['maxRetryCount']) >= 0 else 3
         self._telegramBotApiServer = d['telegramBotApiServer'] if 'telegramBotApiServer' in d else 'https://api.telegram.org'
+
+
+class commandline:
+    def __init__(self, commandline: List[str] = None):
+        self._rebuildHashlist = False
+        if commandline is not None:
+            self.parse(commandline)
+
+    def parse(self, commandline: List[str]):
+        cml = getopt(commandline, '', ['rebuild-hashlist'])
+        for i in cml[0]:
+            if i[0] == '--rebuild-hashlist':
+                self._rebuildHashlist = True
