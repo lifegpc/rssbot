@@ -35,6 +35,7 @@ from usercheck import checkUserPermissionsInChat, UserPermissionsInChatCheckResu
 import sys
 from fileEntry import FileEntries, remove
 from dictdeal import json2data
+from rssbotlib import loadRSSBotLib
 
 
 def getMediaInfo(m: dict, config: RSSConfig = RSSConfig()) -> str:
@@ -321,11 +322,50 @@ class main:
                     di2['parse_mode'] = 'HTML'
                 di['media'].append(di2)
                 ind = ind + 1
-            if not self._setting._downloadMediaFile or self._setting._sendFileURLScheme:
-                re = self._request('sendMediaGroup', 'post', json=di)
-            else:
-                re = self._request('sendMediaGroup', 'post',
-                                   json=di, files=di3)
+            if len(di['media']) > 1:
+                if not self._setting._downloadMediaFile or self._setting._sendFileURLScheme:
+                    re = self._request('sendMediaGroup', 'post', json=di)
+                else:
+                    re = self._request(
+                        'sendMediaGroup', 'post', json=di, files=di3)
+            if len(di['media']) == 1:
+                if di['media'][0]['type'] == 'photo':
+                    if not self._setting._downloadMediaFile or self._setting._sendFileURLScheme:
+                        di['photo'] = di['media'][0]['media']
+                    else:
+                        mekey = di['media'][0]['media'][9:]
+                        di3['photo'] = di3[mekey]
+                        del di3[mekey]
+                    del di['media']
+                    if not self._setting._downloadMediaFile or self._setting._sendFileURLScheme:
+                        re = self._request('sendPhoto', 'post', json=di)
+                    else:
+                        re = self._request('sendPhoto', 'post', json=di, files=di3)
+                elif di['media'][0]['type'] == 'video':
+                    if not self._setting._downloadMediaFile or self._setting._sendFileURLScheme:
+                        di['video'] = di['media'][0]['media']
+                        if 'thumb' in di['media'][0]:
+                            di['thumb'] = di['media'][0]['thumb']
+                    else:
+                        mekey = di['media'][0]['media'][9:]
+                        di3['video'] = di3[mekey]
+                        del di3[mekey]
+                        if 'thumb' in di['media'][0]:
+                            mekey = di['media'][0]['thumb'][9:]
+                            di3['thumb'] = di3[mekey]
+                            del di3[mekey]
+                    if 'duration' in di['media'][0]:
+                        di['duration'] = di['media'][0]['duration']
+                    if 'width' in di['media'][0]:
+                        di['width'] = di['media'][0]['width']
+                    if 'height' in di['media'][0]:
+                        di['height'] = di['media'][0]['height']
+                    di['supports_streaming'] = di['media'][0]['supports_streaming']
+                    del di['media']
+                    if not self._setting._downloadMediaFile or self._setting._sendFileURLScheme:
+                        re = self._request('sendVideo', 'post', json=di)
+                    else:
+                        re = self._request('sendVideo', 'post', json=di, files=di3)
         if re is not None and 'ok' in re and re['ok']:
             if returnError:
                 return True, ''
@@ -379,6 +419,7 @@ class main:
         if self._me is None or 'ok' not in self._me or not self._me['ok']:
             print('无法读取机器人信息')
         self._me = self._me['result']
+        self._rssbotLib = loadRSSBotLib(self._setting._rssbotLib)
         self._upi = None
         self._updateThread = updateThread(self)
         self._updateThread.start()

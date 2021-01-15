@@ -4,3 +4,5 @@ __pycache__/
 !requirements.txt
 *.json
 Temp/
+*.dll
+*.so
