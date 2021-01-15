@@ -14,6 +14,14 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from ctypes import Structure, c_bool, c_uint64, c_char_p, CDLL, c_ushort, c_uint16, c_int
+from enum import Enum, unique
+
+
+@unique
+class AddVideoInfoResult(Enum):
+    OK = 0
+    ERROR = 1
+    IsHLS = 2
 
 
 class BasicInfo(Structure):
@@ -39,26 +47,47 @@ class BasicInfoC:
 
 
 class RSSBotLib:
-    def __init__(self, lib: CDLL):
+    def __init__(self, lib: CDLL, m):
         self._lib = lib
-        self._getBasicInfo = self._lib.getBasicInfo
-        self._getBasicInfo.restype = BasicInfo
+        from rssbot import main
+        self._main: main = m
+        self.__getBasicInfo = self._lib.getBasicInfo
+        self.__getBasicInfo.restype = BasicInfo
 
     def getBasicInfo(self, url: str) -> (bool, BasicInfoC):
         try:
-            d: BasicInfo = self._getBasicInfo(url.encode())
+            d: BasicInfo = self.__getBasicInfo(url.encode())
             if d.ok:
                 return True, BasicInfoC(d)
             return False, None
         except:
             return False, None
 
+    def addVideoInfo(self, url: str, data: dict, loc: str = None) -> AddVideoInfoResult:
+        if loc is not None:
+            re, info = self.getBasicInfo(loc)
+            if not re:
+                re, info = self.getBasicInfo(url)
+        else:
+            re, info = self.getBasicInfo(url)
+        if not re:
+            return AddVideoInfoResult.ERROR
+        if info._typeName is not None and info._typeName == 'hls':
+            return AddVideoInfoResult.IsHLS
+        if info._duration is not None:
+            data['duration'] = max(round(info._duration / (10 ** 6)), 1)
+        if info._width is not None:
+            data['width'] = info._width
+        if info._height is not None:
+            data['height'] = info._height
+        return AddVideoInfoResult.OK
 
-def loadRSSBotLib(loc: str):
+
+def loadRSSBotLib(loc: str, m):
     if loc is None:
         return None
     try:
         lib = CDLL(loc)
-        return RSSBotLib(lib)
+        return RSSBotLib(lib, m)
     except:
         return None

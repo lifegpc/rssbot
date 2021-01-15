@@ -35,7 +35,7 @@ from usercheck import checkUserPermissionsInChat, UserPermissionsInChatCheckResu
 import sys
 from fileEntry import FileEntries, remove
 from dictdeal import json2data
-from rssbotlib import loadRSSBotLib
+from rssbotlib import loadRSSBotLib, AddVideoInfoResult
 
 
 def getMediaInfo(m: dict, config: RSSConfig = RSSConfig()) -> str:
@@ -239,10 +239,27 @@ class main:
                         fileEntry.open()
                         di2['thumb'] = (fileEntry._fullfn, fileEntry._f)
             di['supports_streaming'] = True
-            if not self._setting._downloadMediaFile or self._setting._sendFileURLScheme:
-                re = self._request('sendVideo', 'post', json=di)
-            else:
-                re = self._request('sendVideo', 'post', json=di, files=di2)
+            isOk = True
+            if self._rssbotLib is not None:
+                loc = self._tempFileEntries.get(content['videoList'][0]['src'])._abspath if self._setting._downloadMediaFile and self._tempFileEntries.get(
+                    content['videoList'][0]['src']) is not None else None
+                addre = self._rssbotLib.addVideoInfo(
+                    content['videoList'][0]['src'], di, loc)
+                if addre == AddVideoInfoResult.IsHLS:
+                    isOk = False
+                    del di['video']
+                    del di['thumb']
+                    del di['supports_streaming']
+                    di['text'] = di['caption']
+                    del di['caption']
+                    if config.disable_web_page_preview:
+                        di['disable_web_page_preview'] = True
+                    re = self._request('sendMessage', 'post', json=di)
+            if isOk:
+                if not self._setting._downloadMediaFile or self._setting._sendFileURLScheme:
+                    re = self._request('sendVideo', 'post', json=di)
+                else:
+                    re = self._request('sendVideo', 'post', json=di, files=di2)
         else:
             ind = 0
             if self._setting._downloadMediaFile and not self._setting._sendFileURLScheme:
@@ -320,6 +337,12 @@ class main:
                 if ind == 0:
                     di2['caption'] = text.tostr()
                     di2['parse_mode'] = 'HTML'
+                if self._rssbotLib is not None:
+                    loc = self._tempFileEntries.get(i['src'])._abspath if self._setting._downloadMediaFile and self._tempFileEntries.get(
+                        i['src']) is not None else None
+                    addre = self._rssbotLib.addVideoInfo(i['src'], di2, loc)
+                    if addre == AddVideoInfoResult.IsHLS:
+                        continue
                 di['media'].append(di2)
                 ind = ind + 1
             if len(di['media']) > 1:
@@ -340,7 +363,8 @@ class main:
                     if not self._setting._downloadMediaFile or self._setting._sendFileURLScheme:
                         re = self._request('sendPhoto', 'post', json=di)
                     else:
-                        re = self._request('sendPhoto', 'post', json=di, files=di3)
+                        re = self._request(
+                            'sendPhoto', 'post', json=di, files=di3)
                 elif di['media'][0]['type'] == 'video':
                     if not self._setting._downloadMediaFile or self._setting._sendFileURLScheme:
                         di['video'] = di['media'][0]['media']
@@ -365,7 +389,8 @@ class main:
                     if not self._setting._downloadMediaFile or self._setting._sendFileURLScheme:
                         re = self._request('sendVideo', 'post', json=di)
                     else:
-                        re = self._request('sendVideo', 'post', json=di, files=di3)
+                        re = self._request(
+                            'sendVideo', 'post', json=di, files=di3)
         if re is not None and 'ok' in re and re['ok']:
             if returnError:
                 return True, ''
@@ -419,7 +444,7 @@ class main:
         if self._me is None or 'ok' not in self._me or not self._me['ok']:
             print('无法读取机器人信息')
         self._me = self._me['result']
-        self._rssbotLib = loadRSSBotLib(self._setting._rssbotLib)
+        self._rssbotLib = loadRSSBotLib(self._setting._rssbotLib, self)
         self._upi = None
         self._updateThread = updateThread(self)
         self._updateThread.start()
