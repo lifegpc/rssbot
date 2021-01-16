@@ -25,8 +25,8 @@ class AddVideoInfoResult(Enum):
 
 
 class BasicInfo(Structure):
-    _fields_ = [("ok", c_bool), ("duration", c_uint64), ("bit_rate", c_uint64), ("has_h264", c_bool), ("has_aac", c_bool), ("mime_type", c_char_p), ("type_long_name", c_char_p),
-                ("type_name", c_char_p), ("video_stream_count", c_uint16), ("audio_stream_count", c_uint16), ("subtitle_stream_count", c_uint16), ("width", c_int), ("height", c_int)]
+    _fields_ = [("ok", c_bool), ("duration", c_uint64), ("bit_rate", c_uint64), ("has_h264", c_bool), ("has_aac", c_bool), ("mime_type", c_char_p), ("type_long_name", c_char_p), ("type_name",
+                                                                                                                                                                                   c_char_p), ("video_stream_count", c_uint16), ("audio_stream_count", c_uint16), ("subtitle_stream_count", c_uint16), ("width", c_int), ("height", c_int), ("get_stream_info_ok", c_bool)]
 
 
 class BasicInfoC:
@@ -39,6 +39,7 @@ class BasicInfoC:
         self._typeLongName = data.type_long_name.decode(
         ) if data.type_long_name is not None else None
         self._typeName = data.type_name.decode() if data.type_name is not None else None
+        self._getStreamInfoOk = data.get_stream_info_ok
         self._videoStreamCount = data.video_stream_count
         self._audioStreamCount = data.audio_stream_count
         self._subtitleStreamCount = data.subtitle_stream_count
@@ -76,9 +77,9 @@ class RSSBotLib:
             return AddVideoInfoResult.IsHLS
         if info._duration is not None:
             data['duration'] = max(round(info._duration / (10 ** 6)), 1)
-        if info._width is not None:
+        if info._getStreamInfoOk and info._width is not None:
             data['width'] = info._width
-        if info._height is not None:
+        if info._getStreamInfoOk and info._height is not None:
             data['height'] = info._height
         return AddVideoInfoResult.OK
 
