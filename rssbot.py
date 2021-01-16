@@ -672,6 +672,8 @@ class messageHandle(Thread):
                         self._main._db.setUserStatus(
                             self._fromUserId, userStatus.normalStatus)
                     return
+        if self._botCommand is None and self._data['chat']['type'] in ['group', 'supergroup']:
+            return
         if self._botCommand is None or self._botCommand not in ['/help', '/rss', '/rsslist']:
             self._botCommand = '/help'
         di = {'chat_id': self._chatId}
