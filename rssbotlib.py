@@ -13,8 +13,9 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-from ctypes import Structure, c_bool, c_int64, c_char_p, CDLL, c_ushort, c_uint16, c_int, POINTER, c_size_t
+from ctypes import Structure, c_bool, c_int64, c_char_p, CDLL, c_ushort, c_uint16, c_int, POINTER, c_size_t, pointer
 from enum import Enum, unique
+from typing import List
 
 
 @unique
@@ -103,6 +104,18 @@ class StreamInfoC:
         self._channels = data.channels if data.channels > 0 else None
         self._sampleRate = data.sampleRate if data.sampleRate > 0 else None
 
+    def getCodecDescription(self) -> str:
+        return self._lib.getCodecDescription(self._originCodecID)
+
+    def getCodecMimeType(self) -> List[str]:
+        return self._lib.getCodecMimeType(self._originCodecID)
+
+    def getCodecName(self) -> str:
+        return self._lib.getCodecName(self._originCodecID)
+
+    def getProfileName(self) -> str:
+        return self._lib.getProfileName(self._originCodecID, self._profile)
+
     def isVideo(self) -> bool:
         if self._mediaType == MediaType.VIDEO:
             return True
@@ -166,6 +179,15 @@ class RSSBotLib:
         self._main: main = m
         self.__getBasicInfo = self._lib.getBasicInfo
         self.__getBasicInfo.restype = BasicInfo
+        self.__getCodecDescription = self._lib.getCodecDescription
+        self.__getCodecDescription.restype = c_char_p
+        self.__getCodecMimeType = self._lib.getCodecMimeType
+        self.__getCodecMimeType.restype = POINTER(c_char_p)
+        self.__getCodecMimeType.argstype = [c_int, POINTER(c_size_t)]
+        self.__getCodecName = self._lib.getCodecName
+        self.__getCodecName.restype = c_char_p
+        self.__getProfileName = self._lib.getProfileName
+        self.__getProfileName.restype = c_char_p
 
     def getBasicInfo(self, url: str) -> (bool, BasicInfoC):
         try:
@@ -175,6 +197,59 @@ class RSSBotLib:
             return False, None
         except:
             return False, None
+
+    def getCodecDescription(self, codecId: int) -> str:
+        "codecId is originCodecId"
+        if codecId is None:
+            return None
+        try:
+            r = self.__getCodecDescription(codecId)
+            if r is None:
+                return None
+            return r.decode()
+        except:
+            return None
+
+    def getCodecMimeType(self, codecId: int) -> List[str]:
+        "codecId is originCodecId"
+        if codecId is None:
+            return None
+        try:
+            l = c_size_t(0)
+            pl = pointer(l)
+            r = self.__getCodecMimeType(codecId, pl)
+            if l.value == 0:
+                return None
+            t = []
+            for i in range(l.value):
+                t.append(r[i].decode())
+            return t
+        except:
+            return None
+
+    def getCodecName(self, codecId: int) -> str:
+        "codecId is originCodecId"
+        if codecId is None:
+            return None
+        try:
+            r = self.__getCodecName(codecId)
+            if r is None:
+                return None
+            return r.decode()
+        except:
+            return None
+
+    def getProfileName(self, codecId: int, profile: int) -> str:
+        "codecId is originCodecId"
+        if codecId is None or profile is None:
+            return None
+        try:
+            r = self.__getProfileName(codecId, profile)
+            if r is None:
+                return None
+            return r.decode()
+        except:
+            return None
 
     def addVideoInfo(self, url: str, data: dict, loc: str = None) -> AddVideoInfoResult:
         if loc is not None:
@@ -192,7 +267,7 @@ class RSSBotLib:
         if info.getVideoWidth() is not None:
             data['width'] = info.getVideoWidth()
         if info.getVideoHeight() is not None:
-            data['height'] =info.getVideoHeight()
+            data['height'] = info.getVideoHeight()
         return AddVideoInfoResult.OK
 
 
