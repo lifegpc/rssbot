@@ -35,7 +35,8 @@ rssbotLib=rssbot.dll
 ### telegramBotApiServer
 可选参数。Telegram Bot API Server地址，例如`http://localhost:8081`。设置自建服务器地址后可以启用部分功能。[有关自建Telegram Bot API Server的信息。](https://core.telegram.org/bots/api#using-a-local-bot-api-server)
 ### downloadMediaFile
-可选参数。在发送媒体文件前是否先下载。如果使用官方API地址，使用该方式最大可以发送50M的视频/文件和10M的图片。默认值为否(`0`)。
+可选参数。在发送媒体文件前是否先下载。如果使用官方API地址，使用该方式最大可以发送50M的视频/文件和10M的图片。默认值为否(`0`)。  
+注：即使使用自建Telegram Bot API Server，如果不启用此功能，依旧会受到最大20M文件或5M图片的限制。
 ### sendFileURLScheme
 可选参数。是否使用本地文件（`file:///`）协议发送媒体。需要确保启用`downloadMediaFile`并且使用的是本地的Telegram Bot API Server（`telegramBotApiServer`）。默认值为否(`0`)。
 ### rssbotLib
