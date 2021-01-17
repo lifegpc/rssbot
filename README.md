@@ -21,6 +21,7 @@ rssbotLib=rssbot.dll
 - [downloadMediaFile](#downloadmediafile)
 - [sendFileURLScheme](#sendfileurlscheme)
 - [rssbotLib](#rssbotlib)
+- [databaseLocation](#databaselocation)
 ### token
 必填参数。Telegram Bot API Token。向[@BotFather](https://t.me/BotFather)请求新建Bot，即可得到。
 ### maxCount
@@ -34,9 +35,11 @@ rssbotLib=rssbot.dll
 ### telegramBotApiServer
 可选参数。Telegram Bot API Server地址，例如`http://localhost:8081`。设置自建服务器地址后可以启用部分功能。[有关自建Telegram Bot API Server的信息。](https://core.telegram.org/bots/api#using-a-local-bot-api-server)
 ### downloadMediaFile
-可选参数。在发送媒体文件前是否先下载。如果使用官方API地址，使用该方式最大可以发送50M的视频/文件和10M的图片。默认值为否（0）。
+可选参数。在发送媒体文件前是否先下载。如果使用官方API地址，使用该方式最大可以发送50M的视频/文件和10M的图片。默认值为否(`0`)。
 ### sendFileURLScheme
-可选参数。是否使用本地文件（`file:///`）协议发送媒体。需要确保启用`downloadMediaFile`并且使用的是本地的Telegram Bot API Server（`telegramBotApiServer`）。默认值为否（0）。
+可选参数。是否使用本地文件（`file:///`）协议发送媒体。需要确保启用`downloadMediaFile`并且使用的是本地的Telegram Bot API Server（`telegramBotApiServer`）。默认值为否(`0`)。
 ### rssbotLib
 可选参数。[RSSBotLib](https://github.com/lifegpc/rssbotlib)的共享库位置。设置并且成功加载共享库后，默认启用以下功能：
 - 发送视频时附带时长，视频分辨率大小信息（在视频文件大于10MB时非常有用）。
+### databaseLocation
+可选参数。数据库位置。默认值为`data.db`。

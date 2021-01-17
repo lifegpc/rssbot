@@ -45,6 +45,7 @@ class settings:
         self._sendFileURLScheme = bool(int(
             d['sendFileURLScheme'])) if 'sendFileURLScheme' in d and d['sendFileURLScheme'].isnumeric() else False
         self._rssbotLib = d['rssbotLib'] if 'rssbotLib' in d and d['rssbotLib'] != '' else None
+        self._databaseLocation = d['databaseLocation'] if 'databaseLocation' in d and d['databaseLocation'] != '' else 'data.db'
 
 
 class commandline:

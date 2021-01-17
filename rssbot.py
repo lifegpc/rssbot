@@ -428,7 +428,7 @@ class main:
         if len(sys.argv) > 1:
             self._commandLine.parse(sys.argv[1:])
         self._telegramBotApiServer = self._setting._telegramBotApiServer
-        self._db = database(self)
+        self._db = database(self, self._setting._databaseLocation)
         if not exists('settings.txt'):
             print('找不到settings.txt')
             return -1

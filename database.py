@@ -85,10 +85,10 @@ PRIMARY KEY (hash)
 )''')
         self._db.commit()
 
-    def __init__(self, m):
+    def __init__(self, m, loc: str):
         self._version = [1, 0, 0, 0]
         self._value_lock = Lock()
-        self._db = sqlite3.connect('data.db', check_same_thread=False)
+        self._db = sqlite3.connect(loc, check_same_thread=False)
         ok = self.__check_database()
         if not ok:
             self.__create_table()
