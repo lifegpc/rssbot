@@ -6,3 +6,5 @@ __pycache__/
 Temp/
 *.dll
 *.so
+*.so.*
+*.xml

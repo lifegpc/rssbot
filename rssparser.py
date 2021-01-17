@@ -245,7 +245,7 @@ class RSSParser:
                     else:
                         for k in i.childNodes:
                             s = s + k.toxml()
-                    m[i.nodeName] = unescape(s)
+                    m[i.nodeName] = s
                 elif typ == 'html':
                     s = ''
                     if i.nodeValue is not None:
@@ -256,7 +256,7 @@ class RSSParser:
                     p = HTMLSimpleParser()
                     if 'link' in m and m['link'] is not None:
                         p.baseUrl = m['link']
-                    p.feed(unescape(s))
+                    p.feed(s)
                     if p.data == '' and i.firstChild.nodeValue.find('<') == -1:
                         m[i.nodeName] = i.firstChild.nodeValue
                     else:

@@ -41,9 +41,9 @@ from rssbotlib import loadRSSBotLib, AddVideoInfoResult
 def getMediaInfo(m: dict, config: RSSConfig = RSSConfig()) -> str:
     s = ''
     if 'link' in m:
-        s = f"""{s}标题：<a href="{m['link']}">{escape(m['title'])}</a>"""
+        s = f"""{s}标题：<a href="{m['link']}">{m['title']}</a>"""
     else:
-        s = f"{s}标题：{escape(m['title'])}"
+        s = f"{s}标题：{m['title']}"
     if 'description' in m:
         s = f"{s}\n描述：{escape(m['description'])}"
     if 'ttl' in m and m['ttl'] is not None:
@@ -168,13 +168,13 @@ class main:
         di['chat_id'] = chatId
         text = textc()
         if config.show_RSS_title:
-            text.addtotext(f"<b>{escape(meta['title'])}</b>")
+            text.addtotext(f"<b>{meta['title']}</b>")
         if config.show_Content_title and 'title' in content and content['title'] is not None and content['title'] != '':
             if 'link' in content and content['link'] is not None and content['link'] != '':
                 text.addtotext(
-                    f"""<b><a href="{content['link']}">{escape(content['title'])}</a></b>""")
+                    f"""<b><a href="{content['link']}">{content['title']}</a></b>""")
             else:
-                text.addtotext(f"<b>{escape(content['title'])}</b>")
+                text.addtotext(f"<b>{content['title']}</b>")
         elif 'link' in content and content['link'] is not None and content['link'] != '':
             text.addtotext(
                 f"""<a href="{content['link']}">{escape(content['link'])}</a>""")

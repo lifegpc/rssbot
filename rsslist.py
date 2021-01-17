@@ -18,7 +18,6 @@ from typing import List
 from enum import Enum, unique
 from math import ceil, floor
 from textc import textc, timeToStr
-from html import escape
 
 
 @unique
@@ -45,7 +44,7 @@ class InlineKeyBoardForRSSList(Enum):
 def getTextContentForRSSInList(rssEntry: RSSEntry) -> str:
     text = textc()
     text.addtotext(
-        f"""<a href="{rssEntry.url}">{escape(rssEntry.title)}</a>""")
+        f"""<a href="{rssEntry.url}">{rssEntry.title}</a>""")
     temp = '更新间隔：未知' if rssEntry.interval is None else f'更新间隔：{rssEntry.interval}分'
     text.addtotext(temp)
     temp = '上次更新时间：未知' if rssEntry.lastupdatetime is None or rssEntry.lastupdatetime < 0 else f'上次更新时间：{timeToStr(rssEntry.lastupdatetime)}'
@@ -63,7 +62,7 @@ def getTextContentForRSSInList(rssEntry: RSSEntry) -> str:
 
 
 def getTextContentForRSSUnsubscribeInList(rssEntry: RSSEntry) -> str:
-    return f"""你是否要取消订阅<a href="{rssEntry.url}">{escape(rssEntry.title)}</a>？"""
+    return f"""你是否要取消订阅<a href="{rssEntry.url}">{rssEntry.title}</a>？"""
 
 
 def getInlineKeyBoardForRSSList(chatId: int, RSSEntries: List[RSSEntry], page: int = 1, lastPage: bool = False, itemIndex: int = None) -> dict:
