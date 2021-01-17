@@ -256,7 +256,7 @@ class RSSParser:
                     p = HTMLSimpleParser()
                     if 'link' in m and m['link'] is not None:
                         p.baseUrl = m['link']
-                    p.feed(s)
+                    p.feed(unescape(s))
                     if p.data == '' and i.firstChild.nodeValue.find('<') == -1:
                         m[i.nodeName] = i.firstChild.nodeValue
                     else:
