@@ -15,10 +15,13 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from typing import List
 from getopt import getopt
+from botOwner import BotOwnerList
 
 
 class settings:
-    def __init__(self, fn: str = None):
+    def __init__(self, m, fn: str = None):
+        from rssbot import main
+        self._main: main = m
         if fn is not None:
             self.parse(fn)
 
@@ -46,7 +49,10 @@ class settings:
             d['sendFileURLScheme'])) if 'sendFileURLScheme' in d and d['sendFileURLScheme'].isnumeric() else False
         self._rssbotLib = d['rssbotLib'] if 'rssbotLib' in d and d['rssbotLib'] != '' else None
         self._databaseLocation = d['databaseLocation'] if 'databaseLocation' in d and d['databaseLocation'] != '' else 'data.db'
-        self._retryTTL = int(d['retryTTL']) if 'retryTTL' in d and d['retryTTL'].isnumeric() and int(d['retryTTL']) > 0 else 30
+        self._retryTTL = int(d['retryTTL']) if 'retryTTL' in d and d['retryTTL'].isnumeric(
+        ) and int(d['retryTTL']) > 0 else 30
+        self._botOwnerList = BotOwnerList(
+            self._main, d['botOwnerList']) if 'botOwnerList' in d and d['botOwnerList'] != '' else BotOwnerList(self._main)
 
 
 class commandline:

@@ -420,7 +420,7 @@ class main:
                 self._upi = i['update_id'] + 1
 
     def start(self):
-        self._setting = settings('settings.txt')
+        self._setting = settings(self, 'settings.txt')
         if self._setting._token is None:
             print('没有机器人token')
             return -1
@@ -1060,7 +1060,7 @@ class callbackQueryHandle(Thread):
                 di['text'] = getTextContentForRSSInList(rssList[ind])
                 di['parse_mode'] = 'HTML'
                 di['reply_markup'] = getInlineKeyBoardForRSSInList(
-                    chatId, rssList[ind], ind)
+                    chatId, rssList[ind], ind, self._main._setting._botOwnerList)
                 self._main._request("editMessageText", "post", json=di)
                 self.answer()
                 return
@@ -1155,6 +1155,15 @@ class callbackQueryHandle(Thread):
                 di['reply_markup'] = getInlineKeyBoardForRSSSettingsInList(
                     chatId, rssList[ind], ind)
                 self._main._request("editMessageText", "post", json=di)
+                return
+            elif self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.ForceUpdate:
+                rssList = self._main._db.getRSSListByChatId(chatId)
+                ind = int(self._inputList[3])
+                ind = max(min(ind, len(rssList)), 0)
+                if self._main._db.setRSSForceUpdate(rssList[ind].url, True):
+                    self.answer('已发送强制更新请求。')
+                else:
+                    self.answer('发送强制更新请求失败。')
                 return
         else:
             self.answer('未知的按钮。')

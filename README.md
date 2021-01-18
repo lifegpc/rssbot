@@ -23,6 +23,7 @@ rssbotLib=rssbot.dll
 - [rssbotLib](#rssbotlib)
 - [databaseLocation](#databaselocation)
 - [retryTTL](#retryttl)
+- [botOwnerList](#botownerlist)
 ### token
 必填参数。Telegram Bot API Token。向[@BotFather](https://t.me/BotFather)请求新建Bot，即可得到。
 ### maxCount
@@ -47,3 +48,5 @@ rssbotLib=rssbot.dll
 可选参数。数据库位置。默认值为`data.db`。
 ### retryTTL
 可选参数。RSS更新发生错误后，再次更新的间隔时间。默认值为`30`。单位为分。
+### botOwnerList
+可选参数。具有特殊权限的用户ID，这些用户可以使用部分特殊功能。可以使用`,`分隔两个不同的ID。

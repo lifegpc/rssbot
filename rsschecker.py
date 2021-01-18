@@ -69,6 +69,8 @@ class RSSCheckerThread(Thread):
                 except:
                     print(format_exc())
                     self._main._db.updateRSSWithError(rss.url, int(time()))
+                if rss.forceupdate:
+                    self._main._db.setRSSForceUpdate(rss.url, False)
         if self._main._commandLine._rebuildHashlist and self._main._commandLine._exitAfterRebuild:
             _exit(0)
         self._main._commandLine._rebuildHashlist = False
@@ -80,6 +82,8 @@ class RSSCheckerThread(Thread):
         self._main: main = m
 
     def __needUpdate(self, rss: RSSEntry):
+        if rss.forceupdate:
+            return True
         if rss.lasterrortime is not None and rss.lasterrortime >= rss.lastupdatetime:
             return True if int(time()) > rss.lasterrortime + self._main._setting._retryTTL * 60 else False
         if rss.lastupdatetime is None:

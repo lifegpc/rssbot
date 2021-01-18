@@ -18,6 +18,7 @@ from typing import List
 from enum import Enum, unique
 from math import ceil, floor
 from textc import textc, timeToStr
+from botOwner import BotOwnerList
 
 
 @unique
@@ -39,6 +40,7 @@ class InlineKeyBoardForRSSList(Enum):
     ShowContentTitle = 14
     ShowContent = 15
     SendMedia = 16
+    ForceUpdate = 17
 
 
 def getTextContentForRSSInList(rssEntry: RSSEntry) -> str:
@@ -113,13 +115,18 @@ def getInlineKeyBoardForRSSList(chatId: int, RSSEntries: List[RSSEntry], page: i
     return {'inline_keyboard': d}
 
 
-def getInlineKeyBoardForRSSInList(chatId: int, rssEntry: RSSEntry, index: int) -> dict:
+def getInlineKeyBoardForRSSInList(chatId: int, rssEntry: RSSEntry, index: int, botOwnerList: BotOwnerList = None) -> dict:
     d = []
     i = -1
     d.append([])
     i = i + 1
     d[i].append(
         {'text': '取消订阅', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.Unsubscribe.value},{index}'})
+    if botOwnerList is not None and botOwnerList.isOwner(chatId):
+        d.append([])
+        i = i + 1
+        d[i].append(
+            {'text': '强制更新', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.ForceUpdate.value},{index}'})
     d.append([])
     i = i + 1
     d[i].append(
