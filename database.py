@@ -114,6 +114,7 @@ PRIMARY KEY (hash)
             return False
 
     def __write_version(self):
+        self._db.execute('DELETE FROM config;')
         self._db.execute(
             f'INSERT INTO config VALUES ({self._version[0]}, {self._version[1]}, {self._version[2]}, {self._version[3]});')
         self._db.commit()
