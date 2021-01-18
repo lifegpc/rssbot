@@ -1166,6 +1166,9 @@ class callbackQueryHandle(Thread):
                     self.answer('已发送强制更新请求。')
                 else:
                     self.answer('发送强制更新请求失败。')
+                rssList = self._main._db.getRSSListByChatId(chatId)
+                ind = int(self._inputList[3])
+                ind = max(min(ind, len(rssList)), 0)
                 di['text'] = getTextContentForRSSInList(rssList[ind])
                 di['parse_mode'] = 'HTML'
                 di['reply_markup'] = getInlineKeyBoardForRSSSettingsInList(
