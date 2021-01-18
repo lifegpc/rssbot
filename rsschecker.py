@@ -47,7 +47,8 @@ class RSSCheckerThread(Thread):
                                     chatEntry: ChatEntry = info
                                     try:
                                         for i in range(self._main._setting._maxRetryCount + 1):
-                                            suc, text = self._main._sendMessage(chatEntry.chatId, meta, item, chatEntry.config, True)
+                                            suc, text = self._main._sendMessage(
+                                                chatEntry.chatId, meta, item, chatEntry.config, True)
                                             if suc:
                                                 break
                                             sleep(5)
@@ -61,10 +62,13 @@ class RSSCheckerThread(Thread):
                                                                     'chat_id': chatEntry.chatId, 'text': f'已尝试重发{i}次，发送失败。\n{text}{text2}'})
                                     except:
                                         print(format_exc())
+                    else:
+                        raise ValueError('Unknown RSS.')
                     self._main._db.updateRSS(
                         rss.title, rss.url, updateTime, rss.hashList, p.ttl)
                 except:
                     print(format_exc())
+                    self._main._db.updateRSSWithError(rss.url, int(time()))
         if self._main._commandLine._rebuildHashlist and self._main._commandLine._exitAfterRebuild:
             _exit(0)
         self._main._commandLine._rebuildHashlist = False
@@ -76,6 +80,8 @@ class RSSCheckerThread(Thread):
         self._main: main = m
 
     def __needUpdate(self, rss: RSSEntry):
+        if rss.lasterrortime is not None and rss.lasterrortime >= rss.lastupdatetime:
+            return True if int(time()) > rss.lasterrortime + self._main._setting._retryTTL * 60 else False
         if rss.lastupdatetime is None:
             return True
         TTL = self._main._setting._minTTL

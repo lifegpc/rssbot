@@ -46,6 +46,7 @@ class settings:
             d['sendFileURLScheme'])) if 'sendFileURLScheme' in d and d['sendFileURLScheme'].isnumeric() else False
         self._rssbotLib = d['rssbotLib'] if 'rssbotLib' in d and d['rssbotLib'] != '' else None
         self._databaseLocation = d['databaseLocation'] if 'databaseLocation' in d and d['databaseLocation'] != '' else 'data.db'
+        self._retryTTL = int(d['retryTTL']) if 'retryTTL' in d and d['retryTTL'].isnumeric() and int(d['retryTTL']) > 0 else 30
 
 
 class commandline:

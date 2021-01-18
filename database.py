@@ -40,9 +40,17 @@ class database:
         for i in cur:
             if i[0] == 'table':
                 self._exist_tables[i[1]] = i
-        for i in ['config', 'RSSList']:
+        for i in ['config', 'RSSList', 'chatList', 'userStatus', 'hashList']:
             if i not in self._exist_tables:
                 return False
+        v = self.__read_version()
+        if v is None:
+            return False
+        if v < self._version:
+            if v == [1, 0, 0, 0]:
+                self._db.execute('ALTER TABLE RSSList ADD lasterrortime INT;')
+                self._db.commit()
+            self.__write_version()
         return True
 
     def __create_table(self):
@@ -61,6 +69,7 @@ url TEXT,
 interval INT,
 lastupdatetime INT,
 id TEXT,
+lasterrortime INT,
 PRIMARY KEY (id)
 );''')
         if 'chatList' not in self._exist_tables:
@@ -86,7 +95,7 @@ PRIMARY KEY (hash)
         self._db.commit()
 
     def __init__(self, m, loc: str):
-        self._version = [1, 0, 0, 0]
+        self._version = [1, 0, 0, 1]
         self._value_lock = Lock()
         self._db = sqlite3.connect(loc, check_same_thread=False)
         ok = self.__check_database()
@@ -109,6 +118,11 @@ PRIMARY KEY (hash)
             f'INSERT INTO config VALUES ({self._version[0]}, {self._version[1]}, {self._version[2]}, {self._version[3]});')
         self._db.commit()
 
+    def __read_version(self) -> List[int]:
+        cur = self._db.execute(f'SELECT * FROM config;')
+        for i in cur:
+            return [k for k in i]
+
     def addRSSList(self, title: str, url: str, chatId: int, config: RSSConfig, ttl: int = None, hashEntries: HashEntries = None):
         with self._value_lock:
             try:
@@ -124,7 +138,7 @@ PRIMARY KEY (hash)
                         f"UPDATE RSSList SET title='{dealtext(title)}', interval={ttl if ttl is not None else 'null'} WHERE id='{hashd}'")
                 else:
                     self._db.execute(
-                        f"INSERT INTO RSSList VALUES ('{dealtext(title)}', '{dealtext(url)}', {ttl if ttl is not None else 'null'}, {int(time())}, '{hashd}')")
+                        f"INSERT INTO RSSList VALUES ('{dealtext(title)}', '{dealtext(url)}', {ttl if ttl is not None else 'null'}, {int(time())}, '{hashd}', null)")
                 cur = self._db.execute(
                     f'SELECT * FROM chatList WHERE id="{hashd}" AND chatId={chatId}')
                 has_data2 = False
@@ -178,11 +192,11 @@ PRIMARY KEY (hash)
     def getRSSListByChatId(self, chatId: int) -> List[RSSEntry]:
         with self._value_lock:
             cur = self._db.execute(
-                f"SELECT RSSList.title, RSSList.url, RSSList.interval, RSSList.lastupdatetime, RSSList.id, chatList.config FROM RSSList, chatList WHERE chatList.chatId = {chatId} AND RSSList.id = chatList.id ORDER BY title")
+                f"SELECT RSSList.title, RSSList.url, RSSList.interval, RSSList.lastupdatetime, RSSList.id, RSSList.lasterrortime, chatList.config FROM RSSList, chatList WHERE chatList.chatId = {chatId} AND RSSList.id = chatList.id ORDER BY title")
             RSSEntries = []
             for i in cur:
                 rssEntry = RSSEntry(i, self._main._setting._maxCount)
-                rssEntry.chatList.append(ChatEntry((chatId, i[4], i[5])))
+                rssEntry.chatList.append(ChatEntry((chatId, i[4], i[6])))
                 RSSEntries.append(rssEntry)
             return RSSEntries
 
@@ -280,6 +294,24 @@ PRIMARY KEY (hash)
                 for v in hashEntries.getList():
                     self._db.execute(
                         f"INSERT INTO hashList VALUES ('{v.id}', '{v.hash}', {v.time})")
+                self._db.commit()
+            except:
+                return False
+
+    def updateRSSWithError(self, url: str, lasterrortime: int):
+        with self._value_lock:
+            try:
+                hashd = sha256WithBase64(url)
+                cur = self._db.execute(
+                    f'SELECT * FROM RSSList WHERE id="{hashd}"')
+                has_data = False
+                for i in cur:  # pylint: disable=unused-variable
+                    has_data = True
+                    break
+                if not has_data:
+                    return False
+                self._db.execute(
+                    f"UPDATE RSSList SET lasterrortime={lasterrortime} WHERE id='{hashd}'")
                 self._db.commit()
             except:
                 return False

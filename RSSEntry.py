@@ -133,5 +133,8 @@ class RSSEntry:
         self.id = None
         if data is not None and data[4] is not None:
             self.id = data[4]
+        self.lasterrortime = None
+        if data is not None and data[5] is not None:
+            self.lasterrortime = data[5]
         self.chatList = []
         self.hashList = HashEntries(maxCount)
