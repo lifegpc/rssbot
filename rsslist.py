@@ -115,14 +115,14 @@ def getInlineKeyBoardForRSSList(chatId: int, RSSEntries: List[RSSEntry], page: i
     return {'inline_keyboard': d}
 
 
-def getInlineKeyBoardForRSSInList(chatId: int, rssEntry: RSSEntry, index: int, botOwnerList: BotOwnerList = None) -> dict:
+def getInlineKeyBoardForRSSInList(chatId: int, rssEntry: RSSEntry, index: int, isOwner: bool = False) -> dict:
     d = []
     i = -1
     d.append([])
     i = i + 1
     d[i].append(
         {'text': '取消订阅', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.Unsubscribe.value},{index}'})
-    if botOwnerList is not None and botOwnerList.isOwner(chatId):
+    if isOwner:
         d.append([])
         i = i + 1
         d[i].append(

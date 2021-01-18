@@ -1060,7 +1060,7 @@ class callbackQueryHandle(Thread):
                 di['text'] = getTextContentForRSSInList(rssList[ind])
                 di['parse_mode'] = 'HTML'
                 di['reply_markup'] = getInlineKeyBoardForRSSInList(
-                    chatId, rssList[ind], ind, self._main._setting._botOwnerList)
+                    chatId, rssList[ind], ind, self._main._setting._botOwnerList.isOwner(self._fromUserId))
                 self._main._request("editMessageText", "post", json=di)
                 self.answer()
                 return
