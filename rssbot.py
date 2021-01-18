@@ -1157,6 +1157,8 @@ class callbackQueryHandle(Thread):
                 self._main._request("editMessageText", "post", json=di)
                 return
             elif self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.ForceUpdate:
+                di = {'chat_id': self._data['message']['chat']['id'],
+                      'message_id': self._data['message']['message_id']}
                 rssList = self._main._db.getRSSListByChatId(chatId)
                 ind = int(self._inputList[3])
                 ind = max(min(ind, len(rssList)), 0)
@@ -1164,6 +1166,11 @@ class callbackQueryHandle(Thread):
                     self.answer('已发送强制更新请求。')
                 else:
                     self.answer('发送强制更新请求失败。')
+                di['text'] = getTextContentForRSSInList(rssList[ind])
+                di['parse_mode'] = 'HTML'
+                di['reply_markup'] = getInlineKeyBoardForRSSSettingsInList(
+                    chatId, rssList[ind], ind)
+                self._main._request("editMessageText", "post", json=di)
                 return
         else:
             self.answer('未知的按钮。')

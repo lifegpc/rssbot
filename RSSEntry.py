@@ -136,7 +136,7 @@ class RSSEntry:
         self.lasterrortime = None
         if data is not None and data[5] is not None:
             self.lasterrortime = data[5]
-        self.forceupdate = None
+        self.forceupdate = False
         if data is not None and data[6] is not None:
             self.forceupdate = bool(data[6])
         self.chatList = []

@@ -122,7 +122,7 @@ def getInlineKeyBoardForRSSInList(chatId: int, rssEntry: RSSEntry, index: int, i
     i = i + 1
     d[i].append(
         {'text': '取消订阅', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.Unsubscribe.value},{index}'})
-    if isOwner:
+    if not rssEntry.forceupdate and isOwner:
         d.append([])
         i = i + 1
         d[i].append(
