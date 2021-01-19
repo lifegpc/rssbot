@@ -50,3 +50,12 @@ rssbotLib=rssbot.dll
 可选参数。RSS更新发生错误后，再次更新的间隔时间。默认值为`30`。单位为分。
 ### botOwnerList
 可选参数。具有特殊权限的用户ID，这些用户可以使用部分特殊功能。可以使用`,`分隔两个不同的ID。
+特殊权限：
+- 可以强制更新RSS
+## 命令行参数
+```text
+--rebuild-hashlist 重建hashList
+--exit-after-rebuild 再重建hashList后退出
+-c/--config <file> 从指定文件中读取配置
+```
+

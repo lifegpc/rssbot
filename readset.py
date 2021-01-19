@@ -57,15 +57,17 @@ class settings:
 
 class commandline:
     def __init__(self, commandline: List[str] = None):
+        self._config = 'settings.txt'
         self._rebuildHashlist = False
         self._exitAfterRebuild = False
         if commandline is not None:
             self.parse(commandline)
 
     def parse(self, commandline: List[str]):
-        cml = getopt(commandline, '', [
-                     'rebuild-hashlist', 'exit-after-rebuild'])
+        cml = getopt(commandline, 'c:', ['rebuild-hashlist', 'exit-after-rebuild', 'config='])
         for i in cml[0]:
+            if i[0] in ['-c', '--config']:
+                self._config = i[1]
             if i[0] == '--rebuild-hashlist':
                 self._rebuildHashlist = True
             if i[0] == '--exit-after-rebuild':

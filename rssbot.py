@@ -420,13 +420,13 @@ class main:
                 self._upi = i['update_id'] + 1
 
     def start(self):
-        self._setting = settings(self, 'settings.txt')
-        if self._setting._token is None:
-            print('没有机器人token')
-            return -1
         self._commandLine = commandline()
         if len(sys.argv) > 1:
             self._commandLine.parse(sys.argv[1:])
+        self._setting = settings(self, self._commandLine._config)
+        if self._setting._token is None:
+            print('没有机器人token')
+            return -1
         self._telegramBotApiServer = self._setting._telegramBotApiServer
         self._db = database(self, self._setting._databaseLocation)
         if not exists('settings.txt'):
