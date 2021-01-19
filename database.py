@@ -55,6 +55,10 @@ class database:
                     'ALTER TABLE RSSList ADD forceupdate BOOLEAN;')
                 self._db.execute('UPDATE RSSList SET forceupdate=false;')
                 self._db.commit()
+            if v < [1, 0, 0, 3]:
+                self._db.execute('ALTER TABLE RSSList ADD errorcount INT;')
+                self._db.execute('UPDATE RSSList SET errorcount=0;')
+                self._db.commit()
             self.__write_version()
         return True
 
@@ -76,6 +80,7 @@ lastupdatetime INT,
 id TEXT,
 lasterrortime INT,
 forceupdate BOOLEAN,
+errorcount INT,
 PRIMARY KEY (id)
 );''')
         if 'chatList' not in self._exist_tables:
@@ -101,7 +106,7 @@ PRIMARY KEY (hash)
         self._db.commit()
 
     def __init__(self, m, loc: str):
-        self._version = [1, 0, 0, 2]
+        self._version = [1, 0, 0, 3]
         self._value_lock = Lock()
         self._db = sqlite3.connect(loc, check_same_thread=False)
         ok = self.__check_database()
@@ -145,7 +150,7 @@ PRIMARY KEY (hash)
                         f"UPDATE RSSList SET title='{dealtext(title)}', interval={ttl if ttl is not None else 'null'} WHERE id='{hashd}'")
                 else:
                     self._db.execute(
-                        f"INSERT INTO RSSList VALUES ('{dealtext(title)}', '{dealtext(url)}', {ttl if ttl is not None else 'null'}, {int(time())}, '{hashd}', null, false)")
+                        f"INSERT INTO RSSList VALUES ('{dealtext(title)}', '{dealtext(url)}', {ttl if ttl is not None else 'null'}, {int(time())}, '{hashd}', null, false, 0)")
                 cur = self._db.execute(
                     f'SELECT * FROM chatList WHERE id="{hashd}" AND chatId={chatId}')
                 has_data2 = False
@@ -199,11 +204,11 @@ PRIMARY KEY (hash)
     def getRSSListByChatId(self, chatId: int) -> List[RSSEntry]:
         with self._value_lock:
             cur = self._db.execute(
-                f"SELECT RSSList.title, RSSList.url, RSSList.interval, RSSList.lastupdatetime, RSSList.id, RSSList.lasterrortime, RSSList.forceupdate, chatList.config FROM RSSList, chatList WHERE chatList.chatId = {chatId} AND RSSList.id = chatList.id ORDER BY title")
+                f"SELECT RSSList.title, RSSList.url, RSSList.interval, RSSList.lastupdatetime, RSSList.id, RSSList.lasterrortime, RSSList.forceupdate, RSSList.errorcount, chatList.config FROM RSSList, chatList WHERE chatList.chatId = {chatId} AND RSSList.id = chatList.id ORDER BY title")
             RSSEntries = []
             for i in cur:
                 rssEntry = RSSEntry(i, self._main._setting._maxCount)
-                rssEntry.chatList.append(ChatEntry((chatId, i[4], i[7])))
+                rssEntry.chatList.append(ChatEntry((chatId, i[4], i[8])))
                 RSSEntries.append(rssEntry)
             return RSSEntries
 
@@ -307,7 +312,7 @@ PRIMARY KEY (hash)
                 if not has_data:
                     return False
                 self._db.execute(
-                    f"UPDATE RSSList SET title='{dealtext(title)}', interval={ttl if ttl is not None else 'null'}, lastupdatetime={lastupdatetime} WHERE id='{hashd}'")
+                    f"UPDATE RSSList SET title='{dealtext(title)}', interval={ttl if ttl is not None else 'null'}, lastupdatetime={lastupdatetime}, errorcount=0 WHERE id='{hashd}'")
                 cur = self._db.execute(
                     f"SELECT * FROM hashList WHERE id='{hashd}'")
                 has_data2 = False
@@ -332,13 +337,14 @@ PRIMARY KEY (hash)
                 cur = self._db.execute(
                     f'SELECT * FROM RSSList WHERE id="{hashd}"')
                 has_data = False
-                for i in cur:  # pylint: disable=unused-variable
+                for i in cur:
+                    rss = RSSEntry(i, self._main._setting._maxCount)
                     has_data = True
                     break
                 if not has_data:
                     return False
                 self._db.execute(
-                    f"UPDATE RSSList SET lasterrortime={lasterrortime} WHERE id='{hashd}'")
+                    f"UPDATE RSSList SET lasterrortime={lasterrortime}, errorcount={rss.errorcount + 1} WHERE id='{hashd}'")
                 self._db.commit()
                 return True
             except:

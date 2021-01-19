@@ -54,6 +54,9 @@ def getTextContentForRSSInList(rssEntry: RSSEntry) -> str:
     if rssEntry.lasterrortime is not None:
         temp = f'上次更新失败时间：{timeToStr(rssEntry.lasterrortime)}'
         text.addtotext(temp)
+    if rssEntry.errorcount > 0:
+        temp = f'连续更新失败次数：{rssEntry.errorcount}'
+        text.addtotext(temp)
     if len(rssEntry.chatList) > 0:
         chatEntry: ChatEntry = rssEntry.chatList[0]
         config = chatEntry.config

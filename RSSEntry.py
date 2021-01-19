@@ -139,5 +139,8 @@ class RSSEntry:
         self.forceupdate = False
         if data is not None and data[6] is not None:
             self.forceupdate = bool(data[6])
+        self.errorcount = 0
+        if data is not None and data[7] is not None:
+            self.errorcount = data[7]
         self.chatList = []
         self.hashList = HashEntries(maxCount)

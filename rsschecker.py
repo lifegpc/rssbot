@@ -84,8 +84,8 @@ class RSSCheckerThread(Thread):
     def __needUpdate(self, rss: RSSEntry):
         if rss.forceupdate:
             return True
-        if rss.lasterrortime is not None and rss.lasterrortime >= rss.lastupdatetime:
-            return True if int(time()) > rss.lasterrortime + self._main._setting._retryTTL * 60 else False
+        if rss.lasterrortime is not None and rss.lasterrortime >= rss.lastupdatetime and rss.errorcount > 0:
+            return True if int(time()) > rss.lasterrortime + self._main._setting._retryTTL[rss.errorcount] * 60 else False
         if rss.lastupdatetime is None:
             return True
         TTL = self._main._setting._minTTL
