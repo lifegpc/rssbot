@@ -1057,7 +1057,8 @@ class callbackQueryHandle(Thread):
                 rssList = self._main._db.getRSSListByChatId(chatId)
                 ind = int(self._inputList[3])
                 ind = max(min(ind, len(rssList)), 0)
-                di['text'] = getTextContentForRSSInList(rssList[ind])
+                di['text'] = getTextContentForRSSInList(
+                    rssList[ind], self._main._setting)
                 di['parse_mode'] = 'HTML'
                 di['reply_markup'] = getInlineKeyBoardForRSSInList(
                     chatId, rssList[ind], ind, self._main._setting._botOwnerList.isOwner(self._fromUserId))
@@ -1117,7 +1118,8 @@ class callbackQueryHandle(Thread):
                 rssList = self._main._db.getRSSListByChatId(chatId)
                 ind = int(self._inputList[3])
                 ind = max(min(ind, len(rssList)), 0)
-                di['text'] = getTextContentForRSSInList(rssList[ind])
+                di['text'] = getTextContentForRSSInList(
+                    rssList[ind], self._main._setting)
                 di['parse_mode'] = 'HTML'
                 di['reply_markup'] = getInlineKeyBoardForRSSSettingsInList(
                     chatId, rssList[ind], ind)
@@ -1150,7 +1152,8 @@ class callbackQueryHandle(Thread):
                     self.answer('修改设置失败')
                 rssList = self._main._db.getRSSListByChatId(chatId)
                 ind = max(min(ind, len(rssList)), 0)
-                di['text'] = getTextContentForRSSInList(rssList[ind])
+                di['text'] = getTextContentForRSSInList(
+                    rssList[ind], self._main._setting)
                 di['parse_mode'] = 'HTML'
                 di['reply_markup'] = getInlineKeyBoardForRSSSettingsInList(
                     chatId, rssList[ind], ind)
@@ -1169,7 +1172,8 @@ class callbackQueryHandle(Thread):
                 rssList = self._main._db.getRSSListByChatId(chatId)
                 ind = int(self._inputList[3])
                 ind = max(min(ind, len(rssList)), 0)
-                di['text'] = getTextContentForRSSInList(rssList[ind])
+                di['text'] = getTextContentForRSSInList(
+                    rssList[ind], self._main._setting)
                 di['parse_mode'] = 'HTML'
                 di['reply_markup'] = getInlineKeyBoardForRSSInList(
                     chatId, rssList[ind], ind, self._main._setting._botOwnerList.isOwner(self._fromUserId))

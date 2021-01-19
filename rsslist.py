@@ -18,7 +18,7 @@ from typing import List
 from enum import Enum, unique
 from math import ceil, floor
 from textc import textc, timeToStr
-from botOwner import BotOwnerList
+from readset import settings
 
 
 @unique
@@ -43,11 +43,17 @@ class InlineKeyBoardForRSSList(Enum):
     ForceUpdate = 17
 
 
-def getTextContentForRSSInList(rssEntry: RSSEntry) -> str:
+def getTextContentForRSSInList(rssEntry: RSSEntry, s: settings) -> str:
     text = textc()
     text.addtotext(
         f"""<a href="{rssEntry.url}">{rssEntry.title}</a>""")
-    temp = '更新间隔：未知' if rssEntry.interval is None else f'更新间隔：{rssEntry.interval}分'
+    temp = ''
+    if rssEntry.lasterrortime >= rssEntry.lastupdatetime and rssEntry.errorcount > 0:
+        temp = f'更新间隔：{s._retryTTL[rssEntry.errorcount]}'
+    else:
+        ttl = 0 if rssEntry.interval is None else rssEntry.interval
+        ttl = max(min(ttl, s._maxTTL), s._minTTL)
+        temp = f'更新间隔：{ttl}'
     text.addtotext(temp)
     temp = '上次更新时间：未知' if rssEntry.lastupdatetime is None or rssEntry.lastupdatetime < 0 else f'上次更新时间：{timeToStr(rssEntry.lastupdatetime)}'
     text.addtotext(temp)
