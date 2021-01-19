@@ -22,12 +22,29 @@ from traceback import format_exc
 from urllib.parse import urljoin
 
 
+class HTMLContent:
+    def __init__(self):
+        self.__list = []
+
+    def add(self, s: str, needescaped: bool = False):
+        self.__list.append((s, needescaped))
+
+    def export(self) -> str:
+        r = ''
+        for s, e in self.__list:
+            if e:
+                r = r + escape(s)
+            else:
+                r = r + s
+        return r
+
+
 class HTMLSimpleParser(HTMLParser):
-    def __init__(self, baseUrl: str=None):
+    def __init__(self, baseUrl: str = None):
         self.data = ''
-        self.istag = False
-        self.tagContent = ''
-        self.tagAttrs = ''
+        self.tagName = []
+        self.tagContent = []
+        self.tagAttrs = []
         self.imgList = []
         self.videoList = []
         self.baseUrl = ''
@@ -37,11 +54,17 @@ class HTMLSimpleParser(HTMLParser):
 
     def handle_startendtag(self, tag, attrs):
         if tag == 'br':
-            self.data = self.data + '\n'
+            if len(self.tagName) == 0:
+                self.data = self.data + '\n'
+            else:
+                self.tagContent[-1].add('\n')
 
     def handle_starttag(self, tag, attrs):
         if tag == 'br':
-            self.data = self.data + '\n'
+            if len(self.tagName) == 0:
+                self.data = self.data + '\n'
+            else:
+                self.tagContent[-1].add('\n')
             return
         elif tag == 'img':
             for key, value in attrs:
@@ -59,27 +82,37 @@ class HTMLSimpleParser(HTMLParser):
             if 'src' in p:
                 self.videoList.append(p)
             return
-        self.istag = True
-        self.tagContent = ''
-        self.tagAttrs = ''
+        self.tagName.append(tag)
+        self.tagContent.append(HTMLContent())
+        self.tagAttrs.append('')
         if tag == 'a':
             for key, value in attrs:
                 if key == 'href':
-                    self.tagAttrs = f'{self.tagAttrs} href="{urljoin(self.baseUrl, value)}"'
+                    self.tagAttrs[-1] = f'{self.tagAttrs[-1]} href="{urljoin(self.baseUrl, value)}"'
 
     def handle_data(self, data):
-        if self.istag:
-            self.tagContent = self.tagContent + data
+        if len(self.tagName) > 0:
+            self.tagContent[-1].add(data, True)
         else:
             self.data = self.data + escape(data)
 
     def handle_endtag(self, tag):
-        self.istag = False
         if tag in ['a', 'b', 'i', 'u', 's', 'strong', 'em', 'ins', 'strike', 'del', 'code', 'pre']:
-            self.data = f"{self.data}<{tag}{self.tagAttrs}>{escape(self.tagContent)}</{tag}>"
+            if len(self.tagName) == 1:
+                self.data = f"{self.data}<{tag}{self.tagAttrs[-1]}>{self.tagContent[-1].export()}</{tag}>"
+            elif len(self.tagName) > 1:
+                self.tagContent[-2].add(
+                    f"<{tag}{self.tagAttrs[-1]}>{self.tagContent[-1].export()}</{tag}>")
         elif tag not in ['img', 'video', 'br']:
-            self.data = f"{self.data}{escape(self.tagContent)}"
-        self.tagAttrs = ''
+            if len(self.tagName) == 1:
+                self.data = f"{self.data}{self.tagContent[-1].export()}"
+            elif len(self.tagName) > 1:
+                self.tagContent[-2].add(f"{self.tagContent[-1].export()}")
+        else:
+            return
+        self.tagName = self.tagName[:-1]
+        self.tagContent = self.tagContent[:-1]
+        self.tagAttrs = self.tagAttrs[:-1]
 
 
 class RSSParser:
