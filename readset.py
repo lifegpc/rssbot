@@ -64,7 +64,8 @@ class commandline:
             self.parse(commandline)
 
     def parse(self, commandline: List[str]):
-        cml = getopt(commandline, 'c:', ['rebuild-hashlist', 'exit-after-rebuild', 'config='])
+        cml = getopt(commandline, 'c:', [
+                     'rebuild-hashlist', 'exit-after-rebuild', 'config='])
         for i in cml[0]:
             if i[0] in ['-c', '--config']:
                 self._config = i[1]
