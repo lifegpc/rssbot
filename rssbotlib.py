@@ -76,9 +76,75 @@ class StreamType(Enum):
     TTML = 38
 
 
+class AVDictionaryEntry(Structure):
+    _fields_ = [("key", c_char_p), ("value", c_char_p)]
+
+
+class AVDictionary(Structure):
+    _fields_ = [("count", c_int), ("elems", POINTER(AVDictionaryEntry))]
+
+
+class AVDictionaryC:
+    def __init__(self, data: POINTER(AVDictionary)):
+        self.__dict = {}
+        if not bool(data):
+            return
+        for i in range(data.contents.count):
+            try:
+                ele = data.contents.elems[i]
+                if ele.key is not None:
+                    self.__dict[ele.key.decode()] = ele.value.decode(
+                    ) if ele.value is not None else None
+            except:
+                return
+
+    def __getitem__(self, key: str):
+        if key not in self.__dict:
+            return None
+        return self.__dict[key]
+
+    def keys(self):
+        return self.__dict.keys()
+
+    def __str__(self):
+        t = ''
+        for k in self.__dict.keys():
+            t = f'{t}{k}: {self.__dict[k]}'
+        if t == '':
+            t = 'No Data'
+        return t
+
+
+class AVRational(Structure):
+    _fields_ = [("num", c_int), ("den", c_int)]
+
+
+class AVRationalC:
+    def __init__(self, data: AVRational):
+        self._num = data.num
+        self._den = data.den
+
+    def cal(self):
+        return self._num / self._den
+
+
+class ChapterInfo(Structure):
+    _fields_ = [("id", c_size_t), ("time_base", AVRational), ("start",
+                                                              c_int64), ("end", c_int64), ("metadata", POINTER(AVDictionary))]
+
+
+class ChapterInfoC:
+    def __init__(self, data: ChapterInfo):
+        self._id = data.id
+        self._timeBase = AVRationalC(data.time_base)
+        self._start = data.start
+        self._end = data.end
+        self._metadata = AVDictionaryC(data.metadata)
+
+
 class StreamInfo(Structure):
-    _fields_ = [("originMediaType", c_int), ("mediaType", c_int), ("originCodecID", c_int), ("codecID", c_int), ("bitRate", c_int64), ("bitsPerCodedSample", c_int),
-                ("bitsPerRawSample", c_int), ("profile", c_int), ("level", c_int), ("width", c_int), ("height", c_int), ("channels", c_int), ("sampleRate", c_int)]
+    _fields_ = [("originMediaType", c_int), ("mediaType", c_int), ("originCodecID", c_int), ("codecID", c_int), ("bitRate", c_int64), ("bitsPerCodedSample", c_int), ("bitsPerRawSample",
+                                                                                                                                                                      c_int), ("profile", c_int), ("level", c_int), ("width", c_int), ("height", c_int), ("channels", c_int), ("sampleRate", c_int), ("metadata", POINTER(AVDictionary))]
 
 
 class StreamInfoC:
@@ -103,6 +169,7 @@ class StreamInfoC:
         self._height = data.height if data.height > 0 else None
         self._channels = data.channels if data.channels > 0 else None
         self._sampleRate = data.sampleRate if data.sampleRate > 0 else None
+        self._metadata = AVDictionaryC(data.metadata)
 
     def getCodecDescription(self) -> str:
         return self._lib.getCodecDescription(self._originCodecID)
@@ -128,8 +195,8 @@ class StreamInfoC:
 
 
 class BasicInfo(Structure):
-    _fields_ = [("ok", c_bool), ("duration", c_int64), ("bit_rate", c_int64), ("mime_type", c_char_p), ("type_long_name", c_char_p),
-                ("type_name", c_char_p), ("get_stream_info_ok", c_bool), ("stream_list", POINTER(StreamInfo)), ("stream_list_length", c_size_t)]
+    _fields_ = [("ok", c_bool), ("duration", c_int64), ("bit_rate", c_int64), ("mime_type", c_char_p), ("type_long_name", c_char_p), ("type_name", c_char_p), ("get_stream_info_ok", c_bool),
+                ("stream_list", POINTER(StreamInfo)), ("stream_list_length", c_size_t), ("metadata", POINTER(AVDictionary)), ("chapters", POINTER(ChapterInfo)), ("nb_chapters", c_size_t)]
 
 
 class BasicInfoC:
@@ -141,6 +208,18 @@ class BasicInfoC:
         self._typeLongName = data.type_long_name.decode(
         ) if data.type_long_name is not None else None
         self._typeName = data.type_name.decode() if data.type_name is not None else None
+        self._metadata = AVDictionaryC(data.metadata)
+        self._nbChapters = data.nb_chapters
+        if self._nbChapters == 0:
+            self._chapters = []
+        else:
+            self._chapters = []
+            for i in range(self._nbChapters):
+                try:
+                    self._chapters.append(ChapterInfoC(data.chapters[i]))
+                except:
+                    self._nbChapters = i
+                    break
         self._getStreamInfoOk = data.get_stream_info_ok
         self._streamListLength = max(data.stream_list_length, 0)
         if self._streamListLength == 0 or not self._getStreamInfoOk:
@@ -188,6 +267,7 @@ class RSSBotLib:
         self.__getCodecName.restype = c_char_p
         self.__getProfileName = self._lib.getProfileName
         self.__getProfileName.restype = c_char_p
+        self.__timeBase = self._lib.getAVTIMEBASE()
 
     def getBasicInfo(self, url: str) -> (bool, BasicInfoC):
         try:
@@ -263,7 +343,7 @@ class RSSBotLib:
         if info._typeName is not None and info._typeName == 'hls':
             return AddVideoInfoResult.IsHLS
         if info._duration is not None:
-            data['duration'] = max(round(info._duration / (10 ** 6)), 1)
+            data['duration'] = max(round(info._duration / self.__timeBase), 1)
         if info.getVideoWidth() is not None:
             data['width'] = info.getVideoWidth()
         if info.getVideoHeight() is not None:
