@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-from ctypes import Structure, c_bool, c_int64, c_char_p, CDLL, c_ushort, c_uint16, c_int, POINTER, c_size_t, pointer
+from ctypes import Structure, c_bool, c_int64, c_char_p, CDLL, c_ushort, c_uint16, c_int, POINTER, c_size_t, pointer, c_uint64
 from enum import Enum, unique
 from typing import List
 
@@ -98,18 +98,35 @@ class AVDictionaryC:
             except:
                 return
 
+    def __delitem__(self, key: str):
+        if key not in self.__dict:
+            return None
+        del self.__dict[key]
+
     def __getitem__(self, key: str):
         if key not in self.__dict:
             return None
         return self.__dict[key]
 
+    def __len__(self):
+        return len(self.__dict)
+
+    def __iter__(self):
+        for key in self.__dict.keys():
+            yield (key, self.__dict[key])
+
     def keys(self):
         return self.__dict.keys()
+
+    def __setitem__(self, key, value):
+        if key is not None and value is not None:
+            self.__dict[str(key)] = str(value)
 
     def __str__(self):
         t = ''
         for k in self.__dict.keys():
-            t = f'{t}{k}: {self.__dict[k]}'
+            n = '\n' if t != '' else ''
+            t = f'{t}{n}{k}: {self.__dict[k]}'
         if t == '':
             t = 'No Data'
         return t
@@ -143,8 +160,8 @@ class ChapterInfoC:
 
 
 class StreamInfo(Structure):
-    _fields_ = [("originMediaType", c_int), ("mediaType", c_int), ("originCodecID", c_int), ("codecID", c_int), ("bitRate", c_int64), ("bitsPerCodedSample", c_int), ("bitsPerRawSample",
-                                                                                                                                                                      c_int), ("profile", c_int), ("level", c_int), ("width", c_int), ("height", c_int), ("channels", c_int), ("sampleRate", c_int), ("metadata", POINTER(AVDictionary))]
+    _fields_ = [("originMediaType", c_int), ("mediaType", c_int), ("originCodecID", c_int), ("codecID", c_int), ("bitRate", c_int64), ("bitsPerCodedSample", c_int), ("bitsPerRawSample", c_int),
+                ("profile", c_int), ("level", c_int), ("width", c_int), ("height", c_int), ("channels", c_int), ("sampleRate", c_int), ("metadata", POINTER(AVDictionary)), ("channel_layout", c_uint64)]
 
 
 class StreamInfoC:
@@ -170,6 +187,12 @@ class StreamInfoC:
         self._channels = data.channels if data.channels > 0 else None
         self._sampleRate = data.sampleRate if data.sampleRate > 0 else None
         self._metadata = AVDictionaryC(data.metadata)
+        self._channelLayout = data.channel_layout
+
+    def getChannelLayoutString(self) -> str:
+        if self._mediaType == MediaType.AUDIO:
+            return self._lib.getChannelLayoutString(self._channelLayout)
+        return None
 
     def getCodecDescription(self) -> str:
         return self._lib.getCodecDescription(self._originCodecID)
@@ -258,6 +281,8 @@ class RSSBotLib:
         self._main: main = m
         self.__getBasicInfo = self._lib.getBasicInfo
         self.__getBasicInfo.restype = BasicInfo
+        self.__getChannelLayoutString = self._lib.getChannelLayoutString
+        self.__getChannelLayoutString.restype = c_char_p
         self.__getCodecDescription = self._lib.getCodecDescription
         self.__getCodecDescription.restype = c_char_p
         self.__getCodecMimeType = self._lib.getCodecMimeType
@@ -268,6 +293,11 @@ class RSSBotLib:
         self.__getProfileName = self._lib.getProfileName
         self.__getProfileName.restype = c_char_p
         self.__timeBase = self._lib.getAVTIMEBASE()
+        self.__version = self._lib.version
+        self.__version.restype = POINTER(c_int)
+        self._version = self.getVersion()
+        if self._version is None or self._version != [1, 0, 0, 0]:
+            raise ValueError('RSSBotLib Version unknown or not supported.')
 
     def getBasicInfo(self, url: str) -> (bool, BasicInfoC):
         try:
@@ -277,6 +307,12 @@ class RSSBotLib:
             return False, None
         except:
             return False, None
+
+    def getChannelLayoutString(self, i: int) -> str:
+        try:
+            return self.__getChannelLayoutString(c_uint64(i))
+        except:
+            return None
 
     def getCodecDescription(self, codecId: int) -> str:
         "codecId is originCodecId"
@@ -316,6 +352,16 @@ class RSSBotLib:
             if r is None:
                 return None
             return r.decode()
+        except:
+            return None
+
+    def getVersion(self) -> List[int]:
+        try:
+            r = self.__version()
+            l = []
+            for i in range(4):
+                l.append(r[i])
+            return l
         except:
             return None
 
