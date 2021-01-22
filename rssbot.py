@@ -188,26 +188,57 @@ class main:
         if not config.send_media or (getListCount(content, 'imgList') == 0 and getListCount(content, 'videoList') == 0):
             if config.disable_web_page_preview:
                 di['disable_web_page_preview'] = True
-            di['text'] = text.tostr()
-            di['parse_mode'] = 'HTML'
-            re = self._request('sendMessage', 'post', json=di)
+            while len(text) > 0:
+                di['text'] = text.tostr()
+                di['parse_mode'] = 'HTML'
+                for i in range(self._setting._maxRetryCount + 1):
+                    re = self._request('sendMessage', 'post', json=di)
+                    if re is not None and 'ok' in re and re['ok']:
+                        di['reply_to_message_id'] = re['result']['message_id']
+                        break
+                    if i == self._setting._maxRetryCount:
+                        if returnError and re is not None and 'description' in re:
+                            return False, re['description']
+                        else:
+                            return False, ''
         elif getListCount(content, 'imgList') == 1 and getListCount(content, 'videoList') == 0:
-            di['caption'] = text.tostr()
-            di['parse_mode'] = 'HTML'
-            if not self._setting._downloadMediaFile:
-                di['photo'] = content['imgList'][0]
-                re = self._request('sendPhoto', 'post', json=di)
-            else:
-                fileEntry = self._tempFileEntries.add(content['imgList'][0])
-                if not fileEntry.ok:
-                    return None
-                if self._setting._sendFileURLScheme:
-                    di['photo'] = fileEntry._localURI
-                    re = self._request('sendPhoto', 'post', json=di)
+            f = True
+            while len(text) > 0:
+                if f:
+                    di['caption'] = text.tostr(1024)
                 else:
-                    fileEntry.open()
-                    re = self._request('sendPhoto', 'post', json=di, files={
-                                       'photo': (fileEntry._fullfn, fileEntry._f)})
+                    di['text'] = text.tostr()
+                di['parse_mode'] = 'HTML'
+                for i in range(self._setting._maxRetryCount + 1):
+                    if f:
+                        if not self._setting._downloadMediaFile:
+                            di['photo'] = content['imgList'][0]
+                            re = self._request('sendPhoto', 'post', json=di)
+                        else:
+                            fileEntry = self._tempFileEntries.add(content['imgList'][0])
+                            if not fileEntry.ok:
+                                continue
+                            if self._setting._sendFileURLScheme:
+                                di['photo'] = fileEntry._localURI
+                                re = self._request('sendPhoto', 'post', json=di)
+                            else:
+                                fileEntry.open()
+                                re = self._request('sendPhoto', 'post', json=di, files={'photo': (fileEntry._fullfn, fileEntry._f)})
+                    else:
+                        re = self._request('sendMessage', 'post', json=di)
+                    if re is not None and 'ok' in re and re['ok']:
+                        di['reply_to_message_id'] = re['result']['message_id']
+                        if f:
+                            del di['caption']
+                            if 'photo' in di:
+                                del di['photo']
+                            f = False
+                        break
+                    if i == self._setting._maxRetryCount:
+                        if returnError and re is not None and 'description' in re:
+                            return False, re['description']
+                        else:
+                            return False, ''
         elif getListCount(content, 'imgList') == 0 and getListCount(content, 'videoList') == 1:
             di['caption'] = text.tostr()
             di['parse_mode'] = 'HTML'

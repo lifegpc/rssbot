@@ -18,11 +18,44 @@ from urllib.parse import unquote
 
 
 class textc:
+    def __len__(self):
+        return len(self.__str)
+
     def __init__(self):
         self.__str = ''
+        self.__max = 4096
 
-    def tostr(self):
+    def __str__(self):
         return self.__str
+
+    def checklen(self):
+        return len(self) <= self.__max
+
+    def cut(self):
+        """TODO: Need check html is not breaked
+        TODO: Need calculate char limits after parsed"""
+        l = self.__str.splitlines(True)
+        r = ''
+        while len(f"{r}{l[0]}") <= self.__max:
+            r = r + l[0]
+            l = l[1:]
+        if len(r) == 0:
+            r = l[0][:self.__max]
+            l[0] = l[0][self.__max:]
+        t = ''
+        for i in l:
+            t = t + i
+        self.__str = t
+        return r
+
+    def tostr(self, maxLength: int = 4096):
+        self.__max = maxLength
+        if self.checklen():
+            t = self.__str
+            self.__str = ''
+            return t
+        else:
+            return self.cut()
 
     def addtotext(self, s: str):
         if self.__str == '':

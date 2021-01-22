@@ -349,6 +349,7 @@ class RSSParser:
         try:
             if fn.find('://') > -1:
                 re = requests.get(fn)
+                re.encoding = 'utf8'
                 if re.status_code == 200:
                     self.xmldoc = minidom.parseString(re.text)
             else:
