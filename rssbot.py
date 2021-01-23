@@ -199,11 +199,13 @@ class main:
                     if i == self._setting._maxRetryCount:
                         if returnError and re is not None and 'description' in re:
                             return False, re['description']
-                        else:
+                        elif returnError:
                             return False, ''
+                        else:
+                            return False
         elif getListCount(content, 'imgList') == 1 and getListCount(content, 'videoList') == 0:
             f = True
-            while len(text) > 0:
+            while len(text) > 0 or f:
                 if f:
                     di['caption'] = text.tostr(1024)
                 else:
@@ -215,15 +217,18 @@ class main:
                             di['photo'] = content['imgList'][0]
                             re = self._request('sendPhoto', 'post', json=di)
                         else:
-                            fileEntry = self._tempFileEntries.add(content['imgList'][0])
+                            fileEntry = self._tempFileEntries.add(
+                                content['imgList'][0])
                             if not fileEntry.ok:
                                 continue
                             if self._setting._sendFileURLScheme:
                                 di['photo'] = fileEntry._localURI
-                                re = self._request('sendPhoto', 'post', json=di)
+                                re = self._request(
+                                    'sendPhoto', 'post', json=di)
                             else:
                                 fileEntry.open()
-                                re = self._request('sendPhoto', 'post', json=di, files={'photo': (fileEntry._fullfn, fileEntry._f)})
+                                re = self._request('sendPhoto', 'post', json=di, files={
+                                                   'photo': (fileEntry._fullfn, fileEntry._f)})
                     else:
                         re = self._request('sendMessage', 'post', json=di)
                     if re is not None and 'ok' in re and re['ok']:
@@ -233,64 +238,112 @@ class main:
                             if 'photo' in di:
                                 del di['photo']
                             f = False
+                            if config.disable_web_page_preview:
+                                di['disable_web_page_preview'] = True
                         break
                     if i == self._setting._maxRetryCount:
                         if returnError and re is not None and 'description' in re:
                             return False, re['description']
-                        else:
+                        elif returnError:
                             return False, ''
+                        else:
+                            return False
         elif getListCount(content, 'imgList') == 0 and getListCount(content, 'videoList') == 1:
-            di['caption'] = text.tostr()
-            di['parse_mode'] = 'HTML'
-            if self._setting._downloadMediaFile and not self._setting._sendFileURLScheme:
-                di2 = {}
-            if not self._setting._downloadMediaFile:
-                di['video'] = content['videoList'][0]['src']
-            else:
-                fileEntry = self._tempFileEntries.add(
-                    content['videoList'][0]['src'])
-                if not fileEntry.ok:
-                    return None
-                if self._setting._sendFileURLScheme:
-                    di['video'] = fileEntry._localURI
+            f = True
+            while len(text) > 0 or f:
+                if f:
+                    di['caption'] = text.tostr()
                 else:
-                    fileEntry.open()
-                    di2['video'] = (fileEntry._fullfn, fileEntry._f)
-            if 'poster' in content['videoList'][0] and content['videoList'][0]['poster'] is not None and content['videoList'][0]['poster'] != '':
-                if not self._setting._downloadMediaFile:
-                    di['thumb'] = content['videoList'][0]['poster']
-                else:
-                    fileEntry = self._tempFileEntries.add(
-                        content['videoList'][0]['poster'])
-                    if not fileEntry.ok:
-                        return False
-                    if self._setting._sendFileURLScheme:
-                        di['thumb'] = fileEntry._localURI
+                    di['text'] = text.tostr()
+                di['parse_mode'] = 'HTML'
+                for i in range(self._setting._maxRetryCount + 1):
+                    if f:
+                        if self._setting._downloadMediaFile and not self._setting._sendFileURLScheme:
+                            di2 = {}
+                        if not self._setting._downloadMediaFile:
+                            di['video'] = content['videoList'][0]['src']
+                        else:
+                            fileEntry = self._tempFileEntries.add(
+                                content['videoList'][0]['src'])
+                            if not fileEntry.ok:
+                                continue
+                            if self._setting._sendFileURLScheme:
+                                di['video'] = fileEntry._localURI
+                            else:
+                                fileEntry.open()
+                                di2['video'] = (
+                                    fileEntry._fullfn, fileEntry._f)
+                        if 'poster' in content['videoList'][0] and content['videoList'][0]['poster'] is not None and content['videoList'][0]['poster'] != '':
+                            if not self._setting._downloadMediaFile:
+                                di['thumb'] = content['videoList'][0]['poster']
+                            else:
+                                fileEntry = self._tempFileEntries.add(
+                                    content['videoList'][0]['poster'])
+                                if not fileEntry.ok:
+                                    continue
+                                if self._setting._sendFileURLScheme:
+                                    di['thumb'] = fileEntry._localURI
+                                else:
+                                    fileEntry.open()
+                                    di2['thumb'] = (
+                                        fileEntry._fullfn, fileEntry._f)
+                        di['supports_streaming'] = True
+                        isOk = True
+                        if self._rssbotLib is not None:
+                            loc = self._tempFileEntries.get(content['videoList'][0]['src'])._abspath if self._setting._downloadMediaFile and self._tempFileEntries.get(
+                                content['videoList'][0]['src']) is not None else None
+                            addre = self._rssbotLib.addVideoInfo(
+                                content['videoList'][0]['src'], di, loc)
+                            if addre == AddVideoInfoResult.IsHLS:
+                                isOk = False
+                                f = False
+                                if 'video' in di:
+                                    del di['video']
+                                if 'thumb' in di:
+                                    del di['thumb']
+                                del di['supports_streaming']
+                                di['text'] = di['caption']
+                                del di['caption']
+                                if config.disable_web_page_preview:
+                                    di['disable_web_page_preview'] = True
+                                re = self._request(
+                                    'sendMessage', 'post', json=di)
+                        if isOk:
+                            if not self._setting._downloadMediaFile or self._setting._sendFileURLScheme:
+                                re = self._request(
+                                    'sendVideo', 'post', json=di)
+                            else:
+                                re = self._request(
+                                    'sendVideo', 'post', json=di, files=di2)
                     else:
-                        fileEntry.open()
-                        di2['thumb'] = (fileEntry._fullfn, fileEntry._f)
-            di['supports_streaming'] = True
-            isOk = True
-            if self._rssbotLib is not None:
-                loc = self._tempFileEntries.get(content['videoList'][0]['src'])._abspath if self._setting._downloadMediaFile and self._tempFileEntries.get(
-                    content['videoList'][0]['src']) is not None else None
-                addre = self._rssbotLib.addVideoInfo(
-                    content['videoList'][0]['src'], di, loc)
-                if addre == AddVideoInfoResult.IsHLS:
-                    isOk = False
-                    del di['video']
-                    del di['thumb']
-                    del di['supports_streaming']
-                    di['text'] = di['caption']
-                    del di['caption']
-                    if config.disable_web_page_preview:
-                        di['disable_web_page_preview'] = True
-                    re = self._request('sendMessage', 'post', json=di)
-            if isOk:
-                if not self._setting._downloadMediaFile or self._setting._sendFileURLScheme:
-                    re = self._request('sendVideo', 'post', json=di)
-                else:
-                    re = self._request('sendVideo', 'post', json=di, files=di2)
+                        re = self._request('sendMessage', 'post', json=di)
+                    if re is not None and 'ok' in re and re['ok']:
+                        di['reply_to_message_id'] = re['result']['message_id']
+                        if f:
+                            if 'video' in di:
+                                del di['video']
+                            if 'thumb' in di:
+                                del di['thumb']
+                            if 'caption' in di:
+                                del di['caption']
+                            del di['supports_streaming']
+                            if 'duration' in di:
+                                del di['duration']
+                            if 'width' in di:
+                                del di['width']
+                            if 'height' in di:
+                                del di['height']
+                            if config.disable_web_page_preview:
+                                di['disable_web_page_preview'] = True
+                            f = False
+                        break
+                    if i == self._setting._maxRetryCount:
+                        if returnError and re is not None and 'description' in re:
+                            return False, re['description']
+                        elif returnError:
+                            return False, ''
+                        else:
+                            return False
         else:
             ind = 0
             if self._setting._downloadMediaFile and not self._setting._sendFileURLScheme:
