@@ -14,6 +14,13 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from xml.dom import minidom
+defusedxmlSupported = True
+try:
+    from defusedxml.minidom import parse, parseString
+except:
+    parse = minidom.parse
+    parseString = minidom.parseString
+    defusedxmlSupported = False
 from html.parser import HTMLParser
 from html import escape, unescape
 import sys
@@ -351,9 +358,9 @@ class RSSParser:
                 re = requests.get(fn)
                 re.encoding = 'utf8'
                 if re.status_code == 200:
-                    self.xmldoc = minidom.parseString(re.text)
+                    self.xmldoc = parseString(re.text)
             else:
-                self.xmldoc = minidom.parse(fn)
+                self.xmldoc = parse(fn)
             self.normalize()
             return True
         except:
