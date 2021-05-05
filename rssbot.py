@@ -36,6 +36,7 @@ import sys
 from fileEntry import FileEntries, remove
 from dictdeal import json2data
 from rssbotlib import loadRSSBotLib, AddVideoInfoResult
+from time import sleep
 
 
 def getMediaInfo(m: dict, config: RSSConfig = RSSConfig()) -> str:
@@ -203,6 +204,7 @@ class main:
                             return False, ''
                         else:
                             return False
+                    sleep(5)
         elif getListCount(content, 'imgList') == 1 and getListCount(content, 'videoList') == 0:
             f = True
             while len(text) > 0 or f:
@@ -248,6 +250,7 @@ class main:
                             return False, ''
                         else:
                             return False
+                    sleep(5)
         elif getListCount(content, 'imgList') == 0 and getListCount(content, 'videoList') == 1:
             f = True
             while len(text) > 0 or f:
@@ -344,6 +347,7 @@ class main:
                             return False, ''
                         else:
                             return False
+                    sleep(5)
         else:
             ind = 0
             if self._setting._downloadMediaFile and not self._setting._sendFileURLScheme:
@@ -352,14 +356,22 @@ class main:
             di['media'] = []
             for i in content['imgList']:
                 if ind % 9 == 0 and ind != 0:
-                    if not self._setting._downloadMediaFile or self._setting._sendFileURLScheme:
-                        re = self._request('sendMediaGroup', 'post', json=di)
-                        di['media'] = []
-                    else:
-                        re = self._request(
-                            'sendMediaGroup', 'post', json=di, files=di3)
-                        di['media'] = []
-                        di3 = {}
+                    for _ in range(self._setting._maxRetryCount + 1):
+                        if not self._setting._downloadMediaFile or self._setting._sendFileURLScheme:
+                            re = self._request('sendMediaGroup', 'post', json=di)
+                            if re is not None and 'ok' in re and re['ok']:
+                                di['reply_to_message_id'] = re['result'][0]['message_id']
+                                di['media'] = []
+                                break
+                        else:
+                            re = self._request(
+                                'sendMediaGroup', 'post', json=di, files=di3)
+                            if re is not None and 'ok' in re and re['ok']:
+                                di['reply_to_message_id'] = re['result'][0]['message_id']
+                                di['media'] = []
+                                di3 = {}
+                                break
+                        sleep(5)
                 di2 = {'type': 'photo'}
                 if not self._setting._downloadMediaFile:
                     di2['media'] = i
@@ -374,21 +386,29 @@ class main:
                         di2['media'] = f'attach://file{ind2}'
                         di3[f'file{ind2}'] = (fileEntry._fullfn, fileEntry._f)
                         ind2 = ind2 + 1
-                if ind == 0:
-                    di2['caption'] = text.tostr()
+                if ind % 9 == 0:
+                    di2['caption'] = text.tostr(1024)
                     di2['parse_mode'] = 'HTML'
                 di['media'].append(di2)
                 ind = ind + 1
             for i in content['videoList']:
                 if ind % 9 == 0 and ind != 0:
-                    if not self._setting._downloadMediaFile or self._setting._sendFileURLScheme:
-                        re = self._request('sendMediaGroup', 'post', json=di)
-                        di['media'] = []
-                    else:
-                        re = self._request(
-                            'sendMediaGroup', 'post', json=di, files=di3)
-                        di['media'] = []
-                        di3 = {}
+                    for _ in range(self._setting._maxRetryCount + 1):
+                        if not self._setting._downloadMediaFile or self._setting._sendFileURLScheme:
+                            re = self._request('sendMediaGroup', 'post', json=di)
+                            if re is not None and 'ok' in re and re['ok']:
+                                di['reply_to_message_id'] = re['result']['message_id']
+                                di['media'] = []
+                                break
+                        else:
+                            re = self._request(
+                                'sendMediaGroup', 'post', json=di, files=di3)
+                            if re is not None and 'ok' in re and re['ok']:
+                                di['reply_to_message_id'] = re['result']['message_id']
+                                di['media'] = []
+                                di3 = {}
+                                break
+                        sleep(5)
                 di2 = {'type': 'video', 'supports_streaming': True}
                 if not self._setting._downloadMediaFile:
                     di2['media'] = i['src']
@@ -418,8 +438,8 @@ class main:
                             di3[f'file{ind2}'] = (
                                 fileEntry._fullfn, fileEntry._f)
                             ind2 = ind2 + 1
-                if ind == 0:
-                    di2['caption'] = text.tostr()
+                if ind % 9 == 0:
+                    di2['caption'] = text.tostr(1024)
                     di2['parse_mode'] = 'HTML'
                 if self._rssbotLib is not None:
                     loc = self._tempFileEntries.get(i['src'])._abspath if self._setting._downloadMediaFile and self._tempFileEntries.get(
@@ -430,12 +450,19 @@ class main:
                 di['media'].append(di2)
                 ind = ind + 1
             if len(di['media']) > 1:
-                if not self._setting._downloadMediaFile or self._setting._sendFileURLScheme:
-                    re = self._request('sendMediaGroup', 'post', json=di)
-                else:
-                    re = self._request(
-                        'sendMediaGroup', 'post', json=di, files=di3)
+                for _ in range(self._setting._maxRetryCount + 1):
+                    if not self._setting._downloadMediaFile or self._setting._sendFileURLScheme:
+                        re = self._request('sendMediaGroup', 'post', json=di)
+                    else:
+                        re = self._request(
+                            'sendMediaGroup', 'post', json=di, files=di3)
+                    if re is not None and 'ok' in re and re['ok']:
+                        break
+                    sleep(5)
             if len(di['media']) == 1:
+                if 'caption' in di['media'][0]:
+                    di['caption'] = di['media'][0]['caption']
+                    di['parse_mode'] = 'HTML'
                 if di['media'][0]['type'] == 'photo':
                     if not self._setting._downloadMediaFile or self._setting._sendFileURLScheme:
                         di['photo'] = di['media'][0]['media']
@@ -444,11 +471,15 @@ class main:
                         di3['photo'] = di3[mekey]
                         del di3[mekey]
                     del di['media']
-                    if not self._setting._downloadMediaFile or self._setting._sendFileURLScheme:
-                        re = self._request('sendPhoto', 'post', json=di)
-                    else:
-                        re = self._request(
-                            'sendPhoto', 'post', json=di, files=di3)
+                    for _ in range(self._setting._maxRetryCount + 1):
+                        if not self._setting._downloadMediaFile or self._setting._sendFileURLScheme:
+                            re = self._request('sendPhoto', 'post', json=di)
+                        else:
+                            re = self._request(
+                                'sendPhoto', 'post', json=di, files=di3)
+                        if re is not None and 'ok' in re and re['ok']:
+                            break
+                        sleep(5)
                 elif di['media'][0]['type'] == 'video':
                     if not self._setting._downloadMediaFile or self._setting._sendFileURLScheme:
                         di['video'] = di['media'][0]['media']
@@ -470,11 +501,41 @@ class main:
                         di['height'] = di['media'][0]['height']
                     di['supports_streaming'] = di['media'][0]['supports_streaming']
                     del di['media']
-                    if not self._setting._downloadMediaFile or self._setting._sendFileURLScheme:
-                        re = self._request('sendVideo', 'post', json=di)
+                    for _ in range(self._setting._maxRetryCount + 1):
+                        if not self._setting._downloadMediaFile or self._setting._sendFileURLScheme:
+                            re = self._request('sendVideo', 'post', json=di)
+                        else:
+                            re = self._request(
+                                'sendVideo', 'post', json=di, files=di3)
+                        if re is not None and 'ok' in re and re['ok']:
+                            break
+                        sleep(5)
+            if len(text) > 0:
+                di = {}
+                di['chat_id'] = chatId
+                if config.disable_web_page_preview:
+                    di['disable_web_page_preview'] = True
+                if re is not None and 'ok' in re and re['ok']:
+                    if isinstance(re['result'], list):
+                        di['reply_to_message_id'] = re['result'][0]['message_id']
                     else:
-                        re = self._request(
-                            'sendVideo', 'post', json=di, files=di3)
+                        di['reply_to_message_id'] = re['result']['message_id']
+            while len(text) > 0:
+                di['text'] = text.tostr()
+                di['parse_mode'] = 'HTML'
+                for i in range(self._setting._maxRetryCount + 1):
+                    re = self._request('sendMessage', 'post', json=di)
+                    if re is not None and 'ok' in re and re['ok']:
+                        di['reply_to_message_id'] = re['result']['message_id']
+                        break
+                    if i == self._setting._maxRetryCount:
+                        if returnError and re is not None and 'description' in re:
+                            return False, re['description']
+                        elif returnError:
+                            return False, ''
+                        else:
+                            return False
+                    sleep(5)
         if re is not None and 'ok' in re and re['ok']:
             if returnError:
                 return True, ''
