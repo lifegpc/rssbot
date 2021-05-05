@@ -59,7 +59,7 @@ class RSSCheckerThread(Thread):
                     else:
                         raise ValueError('Unknown RSS.')
                     self._main._db.updateRSS(
-                        rss.title, rss.url, updateTime, rss.hashList, p.ttl)
+                        p.title, rss.url, updateTime, rss.hashList, p.ttl)
                 except:
                     print(format_exc())
                     self._main._db.updateRSSWithError(rss.url, int(time()))
