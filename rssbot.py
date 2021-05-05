@@ -37,6 +37,7 @@ from fileEntry import FileEntries, remove
 from dictdeal import json2data
 from rssbotlib import loadRSSBotLib, AddVideoInfoResult
 from time import sleep
+from miraiDatabase import MiraiDatabase
 
 
 MAX_ITEM_IN_MEDIA_GROUP = 10
@@ -580,6 +581,7 @@ class main:
         if not exists('settings.txt'):
             print('找不到settings.txt')
             return -1
+        self._mriaidb = MiraiDatabase(self, self._setting._databaseLocation)
         self._r = Session()
         if self._telegramBotApiServer != 'https://api.telegram.org':
             self._request("logOut", "post",
