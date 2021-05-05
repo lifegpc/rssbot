@@ -39,6 +39,9 @@ from rssbotlib import loadRSSBotLib, AddVideoInfoResult
 from time import sleep
 
 
+MAX_ITEM_IN_MEDIA_GROUP = 10
+
+
 def getMediaInfo(m: dict, config: RSSConfig = RSSConfig()) -> str:
     s = ''
     if 'link' in m:
@@ -355,7 +358,7 @@ class main:
                 di3 = {}
             di['media'] = []
             for i in content['imgList']:
-                if ind % 9 == 0 and ind != 0:
+                if ind % MAX_ITEM_IN_MEDIA_GROUP == 0 and ind != 0:
                     for _ in range(self._setting._maxRetryCount + 1):
                         if not self._setting._downloadMediaFile or self._setting._sendFileURLScheme:
                             re = self._request('sendMediaGroup', 'post', json=di)
@@ -386,13 +389,13 @@ class main:
                         di2['media'] = f'attach://file{ind2}'
                         di3[f'file{ind2}'] = (fileEntry._fullfn, fileEntry._f)
                         ind2 = ind2 + 1
-                if ind % 9 == 0:
+                if ind % MAX_ITEM_IN_MEDIA_GROUP == 0:
                     di2['caption'] = text.tostr(1024)
                     di2['parse_mode'] = 'HTML'
                 di['media'].append(di2)
                 ind = ind + 1
             for i in content['videoList']:
-                if ind % 9 == 0 and ind != 0:
+                if ind % MAX_ITEM_IN_MEDIA_GROUP == 0 and ind != 0:
                     for _ in range(self._setting._maxRetryCount + 1):
                         if not self._setting._downloadMediaFile or self._setting._sendFileURLScheme:
                             re = self._request('sendMediaGroup', 'post', json=di)
@@ -438,7 +441,7 @@ class main:
                             di3[f'file{ind2}'] = (
                                 fileEntry._fullfn, fileEntry._f)
                             ind2 = ind2 + 1
-                if ind % 9 == 0:
+                if ind % MAX_ITEM_IN_MEDIA_GROUP == 0:
                     di2['caption'] = text.tostr(1024)
                     di2['parse_mode'] = 'HTML'
                 if self._rssbotLib is not None:
