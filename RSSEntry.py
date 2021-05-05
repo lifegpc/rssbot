@@ -126,7 +126,7 @@ class RSSEntry:
             self.url = data[1]
         self.interval = None
         if data is not None and data[2] is not None:
-            self.interval = data[2]
+            self.interval = int(data[2])
         self.lastupdatetime = None
         if data is not None and data[3] is not None:
             self.lastupdatetime = data[3]
