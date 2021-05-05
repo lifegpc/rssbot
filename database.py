@@ -165,12 +165,11 @@ PRIMARY KEY (hash)
                 if has_data:
                     self._db.execute(
                         f"UPDATE RSSList SET title=?, interval=? WHERE id=?;",
-                        (title, ttl if ttl is not None else 'null', hashd))
+                        (title, ttl, hashd))
                 else:
                     self._db.execute(
                         f"INSERT INTO RSSList VALUES (?, ?, ?, ?, ?, null, false, 0);",
-                        (title, url, ttl if ttl is not None else 'null',
-                         int(time()), hashd))
+                        (title, url, ttl, int(time()), hashd))
                 cur = self._db.execute(
                     f'SELECT * FROM chatList WHERE id=? AND chatId=?;',
                     (hashd, chatId))
@@ -343,7 +342,7 @@ PRIMARY KEY (hash)
                     return False
                 self._db.execute(
                     f"UPDATE RSSList SET title=?, interval=?, lastupdatetime=?, errorcount=0 WHERE id=?;",
-                    (title, ttl if ttl is not None else 'null', lastupdatetime, hashd))
+                    (title, ttl, lastupdatetime, hashd))
                 cur = self._db.execute(
                     f"SELECT * FROM hashList WHERE id=?;", (hashd,))
                 has_data2 = False
