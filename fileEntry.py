@@ -59,9 +59,9 @@ class FileEntry:
                     for chunk in self._r.iter_content(1024):
                         if chunk:
                             f.write(chunk)
+            self.ok = self._r.ok
         except:
             self.ok = False
-        self.ok = self._r.ok
         self._fileSize = getsize(self._abspath)
         self._fileExist = True if exists(self._abspath) else False
         self._localURI = f"file://{self._abspath}" if self._abspath[0] == '/' else f"file:///{self._abspath}"
