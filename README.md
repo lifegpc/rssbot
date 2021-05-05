@@ -36,7 +36,7 @@ rssbotLib=rssbot.dll
 ### maxTTL
 可选参数。最大更新间隔。默认值为`1440`。单位为分。如果该值小于`minTTL`，将会自动设为`minTTL`。
 ### maxRetryCount
-可选参数。使用Telegram Bot API发送信息发生错误时的最大重试次数。默认值为3。
+可选参数。使用Telegram Bot API发送信息发生错误时的最大重试次数。默认值为5。
 ### telegramBotApiServer
 可选参数。Telegram Bot API Server地址，例如`http://localhost:8081`。设置自建服务器地址后可以启用部分功能。[有关自建Telegram Bot API Server的信息。](https://core.telegram.org/bots/api#using-a-local-bot-api-server)
 ### downloadMediaFile

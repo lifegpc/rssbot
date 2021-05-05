@@ -42,7 +42,7 @@ class settings:
         self._maxTTL = int(d['maxTTL']) if 'maxTTL' in d and d['maxTTL'].isnumeric(
         ) and int(d['maxTTL']) >= self._minTTL else max(1440, self._minTTL)
         self._maxRetryCount = int(d['maxRetryCount']) if 'maxRetryCount' in d and d['maxRetryCount'].isnumeric(
-        ) and int(d['maxRetryCount']) >= 0 else 3
+        ) and int(d['maxRetryCount']) >= 0 else 5
         self._telegramBotApiServer = d['telegramBotApiServer'] if 'telegramBotApiServer' in d else 'https://api.telegram.org'
         self._downloadMediaFile = bool(int(
             d['downloadMediaFile'])) if 'downloadMediaFile' in d and d['downloadMediaFile'].isnumeric() else False
