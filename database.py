@@ -23,6 +23,16 @@ from hashl import sha256WithBase64
 from time import time
 
 
+VERSION_TABLE = '''CREATE TABLE version (
+id TEXT,
+v1 INT,
+v2 INT,
+v3 INT,
+v4 INT,
+PRIMARY KEY (id)
+);'''
+
+
 def dealtext(s: str):
     return s.replace("'", "''")
 
@@ -35,41 +45,30 @@ class userStatus(Enum):
 
 class database:
     def __check_database(self):
-        cur = self._db.execute('SELECT * FROM main.sqlite_master;')
-        self._exist_tables = {}
-        for i in cur:
-            if i[0] == 'table':
-                self._exist_tables[i[1]] = i
-        for i in ['config', 'RSSList', 'chatList', 'userStatus', 'hashList']:
-            if i not in self._exist_tables:
-                return False
+        self.__updateExistsTable()
         v = self.__read_version()
         if v is None:
             return False
         if v < self._version:
             if v == [1, 0, 0, 0]:
                 self._db.execute('ALTER TABLE RSSList ADD lasterrortime INT;')
-                self._db.commit()
             if v < [1, 0, 0, 2]:
                 self._db.execute(
                     'ALTER TABLE RSSList ADD forceupdate BOOLEAN;')
                 self._db.execute('UPDATE RSSList SET forceupdate=false;')
-                self._db.commit()
             if v < [1, 0, 0, 3]:
                 self._db.execute('ALTER TABLE RSSList ADD errorcount INT;')
                 self._db.execute('UPDATE RSSList SET errorcount=0;')
-                self._db.commit()
+            if v < [1, 0, 0, 4]:
+                self._db.execute('DROP TABLE config;')
+                self._db.execute(VERSION_TABLE)
+            self.__updateExistsTable()
             self.__write_version()
         return True
 
     def __create_table(self):
-        if 'config' not in self._exist_tables:
-            self._db.execute(f'''CREATE TABLE config (
-version1 INT,
-version2 INT,
-version3 INT,
-version4 INT
-);''')
+        if 'version' not in self._exist_tables:
+            self._db.execute(VERSION_TABLE)
             self.__write_version()
         if 'RSSList' not in self._exist_tables:
             self._db.execute(f'''CREATE TABLE RSSList (
@@ -106,7 +105,7 @@ PRIMARY KEY (hash)
         self._db.commit()
 
     def __init__(self, m, loc: str):
-        self._version = [1, 0, 0, 3]
+        self._version = [1, 0, 0, 4]
         self._value_lock = Lock()
         self._db = sqlite3.connect(loc, check_same_thread=False)
         ok = self.__check_database()
@@ -114,6 +113,12 @@ PRIMARY KEY (hash)
             self.__create_table()
         from rssbot import main
         self._main: main = m
+
+    def __isNewVersionType(self):
+        if 'version' in self._exist_tables:
+            return True
+        else:
+            return False
 
     def __removeRSSEntry(self, id: str) -> bool:
         try:
@@ -125,15 +130,31 @@ PRIMARY KEY (hash)
             return False
 
     def __write_version(self):
-        self._db.execute('DELETE FROM config;')
-        self._db.execute(
-            f'INSERT INTO config VALUES ({self._version[0]}, {self._version[1]}, {self._version[2]}, {self._version[3]});')
+        if self.__read_version() is None:
+            self._db.execute('INSERT INTO version VALUES (?, ?, ?, ?, ?);',
+                             tuple(['main'] + self._version))
+        else:
+            self._db.execute(
+                "UPDATE version SET v1=?, v2=?, v3=?, v4=? WHERE id='main';",
+                tuple(self._version))
         self._db.commit()
 
     def __read_version(self) -> List[int]:
-        cur = self._db.execute(f'SELECT * FROM config;')
+        if self.__isNewVersionType():
+            cur = self._db.execute("SELECT * FROM version WHERE id='main';")
+            for i in cur:
+                return [k for k in i if isinstance(k, int)]
+        else:
+            cur = self._db.execute(f'SELECT * FROM config;')
+            for i in cur:
+                return [k for k in i]
+
+    def __updateExistsTable(self):
+        cur = self._db.execute('SELECT * FROM main.sqlite_master;')
+        self._exist_tables = {}
         for i in cur:
-            return [k for k in i]
+            if i[0] == 'table':
+                self._exist_tables[i[1]] = i
 
     def addRSSList(self, title: str, url: str, chatId: int, config: RSSConfig, ttl: int = None, hashEntries: HashEntries = None):
         with self._value_lock:
