@@ -252,7 +252,7 @@ class main:
             f = True
             while len(text) > 0 or f:
                 if f:
-                    di['caption'] = text.tostr()
+                    di['caption'] = text.tostr(1024)
                 else:
                     di['text'] = text.tostr()
                 di['parse_mode'] = 'HTML'
