@@ -46,20 +46,14 @@ class RSSCheckerThread(Thread):
                                 for info in rss.chatList:
                                     chatEntry: ChatEntry = info
                                     try:
-                                        for i in range(self._main._setting._maxRetryCount + 1):
-                                            suc, text = self._main._sendMessage(
-                                                chatEntry.chatId, meta, item, chatEntry.config, True)
-                                            if suc:
-                                                break
-                                            sleep(5)
-                                            if i < self._main._setting._maxRetryCount:
-                                                print(f'开始第{i+i}次重试\n{text}')
-                                            else:
-                                                text2 = f'\n{rss.title}'
-                                                if 'link' in item:
-                                                    text2 = f"{text2}\n{item['link']}"
-                                                self._main._request('sendMessage', 'post', {
-                                                                    'chat_id': chatEntry.chatId, 'text': f'已尝试重发{i}次，发送失败。\n{text}{text2}'})
+                                        suc, text = self._main._sendMessage(
+                                            chatEntry.chatId, meta, item, chatEntry.config, True)
+                                        if not suc:
+                                            text2 = f'\n{rss.title}'
+                                            if 'link' in item:
+                                                text2 = f"{text2}\n{item['link']}"
+                                            self._main._request('sendMessage', 'post', {
+                                                                'chat_id': chatEntry.chatId, 'text': f'发送失败。\n{text}{text2}'})
                                     except:
                                         print(format_exc())
                     else:
