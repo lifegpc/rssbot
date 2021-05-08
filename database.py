@@ -146,6 +146,8 @@ PRIMARY KEY (userId)
         self._version = [1, 0, 0, 5]
         self._value_lock = Lock()
         self._db = sqlite3.connect(loc, check_same_thread=False)
+        self._db.execute('VACUUM;')
+        self._db.commit()
         ok = self.__check_database()
         if not ok:
             self.__create_table()
