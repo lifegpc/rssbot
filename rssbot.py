@@ -164,14 +164,16 @@ class main:
             print(format_exc())
             return None
 
-    def _sendMessage(self, chatId: int, meta: dict, content: dict, config: RSSConfig, returnError: bool = False):
+    def _sendMessage(self, chatId: int, meta: dict, content: dict, config: RSSConfig, returnError: bool = False, testMessage: bool = False):
         with self._tempFileEntries._value_lock:
-            return self.__sendMessage(chatId, meta, content, config, returnError)
+            return self.__sendMessage(chatId, meta, content, config, returnError, testMessage)
 
-    def __sendMessage(self, chatId: int, meta: dict, content: dict, config: RSSConfig, returnError: bool = False):
+    def __sendMessage(self, chatId: int, meta: dict, content: dict, config: RSSConfig, returnError: bool = False, testMessage: bool = False):
         di = {}
         di['chat_id'] = chatId
         text = textc()
+        if testMessage:
+            text.addtotext('#测试消息')
         if config.show_RSS_title:
             text.addtotext(f"<b>{meta['title']}</b>")
         if config.show_Content_title and 'title' in content and content['title'] is not None and content['title'] != '':
@@ -1020,7 +1022,7 @@ class callbackQueryHandle(Thread):
                     return
                 ran = randrange(0, len(self._rssMeta.itemList))
                 suc, mes = self._main._sendMessage(
-                    chatId, self._rssMeta.meta, self._rssMeta.itemList[ran], self._rssMeta.config, True)
+                    chatId, self._rssMeta.meta, self._rssMeta.itemList[ran], self._rssMeta.config, True, True)
                 if suc:
                     self.answer(f'第{ran}条发送成功！')
                 else:
