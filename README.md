@@ -27,6 +27,8 @@ rssbotLib=rssbot.dll
 - [databaseLocation](#databaselocation)
 - [retryTTL](#retryttl)
 - [botOwnerList](#botownerlist)
+- [miraiApiHTTPServer](#miraiapihttpserver)
+- [miraiApiHTTPAuthKey](#miraiapihttpauthkey)
 ### token
 必填参数。Telegram Bot API Token。向[@BotFather](https://t.me/BotFather)请求新建Bot，即可得到。
 ### maxCount
@@ -57,6 +59,10 @@ rssbotLib=rssbot.dll
 可选参数。具有特殊权限的用户ID，这些用户可以使用部分特殊功能。可以使用`,`分隔两个不同的ID。
 特殊权限：
 - 可以强制更新RSS
+### miraiApiHTTPServer
+可选参数。指定[mirai-api-http](https://github.com/project-mirai/mirai-api-http)服务器位置。例如`http://localhost:8081`。可用来发送QQ消息。设置后必须设置[`miraiApiHTTPAuthKey`](#miraiapihttpauthkey)
+### miraiApiHTTPAuthKey
+可选参数。指定mirai-api-http的[AuthKey](https://github.com/project-mirai/mirai-api-http#开始使用)。
 ## 命令行参数
 ```text
 --rebuild-hashlist 重建hashList

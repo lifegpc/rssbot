@@ -574,16 +574,20 @@ class main:
         self._commandLine = commandline()
         if len(sys.argv) > 1:
             self._commandLine.parse(sys.argv[1:])
+        if not exists('settings.txt'):
+            print('找不到settings.txt')
+            return -1
         self._setting = settings(self, self._commandLine._config)
         if self._setting.token is None:
             print('没有机器人token')
             return -1
         self._telegramBotApiServer = self._setting.telegramBotApiServer
         self._db = database(self, self._setting.databaseLocation)
-        if not exists('settings.txt'):
-            print('找不到settings.txt')
-            return -1
-        self._mriaidb = MiraiDatabase(self, self._setting.databaseLocation)
+        if self._setting.miraiApiHTTPServer is not None:
+            if self._setting.miraiApiHTTPAuthKey is None:
+                print('未设置AuthKey。')
+                return -1
+            self._mriaidb = MiraiDatabase(self, self._setting.databaseLocation)
         self._r = Session()
         if self._telegramBotApiServer != 'https://api.telegram.org':
             self._request("logOut", "post",

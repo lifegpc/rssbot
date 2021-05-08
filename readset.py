@@ -54,6 +54,8 @@ class settings:
             d['retryTTL']) if 'retryTTL' in d and d['retryTTL'] != '' else RetryTTLList()
         self._botOwnerList = BotOwnerList(
             self._main, d['botOwnerList']) if 'botOwnerList' in d and d['botOwnerList'] != '' else BotOwnerList(self._main)
+        self._miraiApiHTTPServer = d['miraiApiHTTPServer'] if 'miraiApiHTTPServer' in d and d['miraiApiHTTPServer'] != '' else None
+        self._miraiApiHTTPAuthKey = d['miraiApiHTTPAuthKey'] if 'miraiApiHTTPAuthKey' in d and d['miraiApiHTTPAuthKey'] != '' else None
 
     @property
     def token(self) -> str:
@@ -102,6 +104,14 @@ class settings:
     @property
     def botOwnerList(self) -> BotOwnerList:
         return self._botOwnerList
+
+    @property
+    def miraiApiHTTPServer(self) -> str:
+        return self._miraiApiHTTPServer
+
+    @property
+    def miraiApiHTTPAuthKey(self) -> str:
+        return self._miraiApiHTTPAuthKey
 
 
 class commandline:
