@@ -22,24 +22,59 @@ from hashl import sha256WithBase64
 
 class ChatEntry:
     def __init__(self, data=None):
-        self.chatId = data[0] if data is not None and data[0] is not None else None
-        self.id = data[1] if data is not None and data[1] is not None else None
+        self._chatId = data[0] if data is not None and data[0] is not None else None
+        self._id = data[1] if data is not None and data[1] is not None else None
         try:
             self.config = RSSConfig(
                 loads(data[2])) if data is not None and data[2] is not None else RSSConfig()
         except:
             self.config = RSSConfig()
 
+    @property
+    def chatId(self) -> int:
+        if self._chatId is None:
+            return None
+        if isinstance(self._chatId, int):
+            return self._chatId
+        else:
+            raise ValueError('chatId must be int.')
+
+    @property
+    def id(self) -> str:
+        return self._id
+
 
 class HashEntry:
     def __init__(self, data=None, id: str = None, hash: str = None):
-        self.id = data[0] if data is not None and data[0] is not None else None
-        self.hash = data[1] if data is not None and data[1] is not None else None
-        self.time = data[2] if data is not None and data[2] is not None else time_ns()
+        self._id = data[0] if data is not None and data[0] is not None else None
+        self._hash = data[1] if data is not None and data[1] is not None else None
+        self._time = data[2] if data is not None and data[2] is not None else time_ns()
         if id is not None:
-            self.id = id
+            self._id = id
         if hash is not None:
-            self.hash = hash
+            self._hash = hash
+
+    @property
+    def id(self) -> str:
+        return self._id
+
+    @property
+    def hash(self) -> str:
+        return self._hash
+
+    @property
+    def time(self) -> str:
+        if self._time is None:
+            return None
+        if isinstance(self._time, int):
+            return self._time
+        else:
+            raise ValueError('time must be int.')
+
+    @time.setter
+    def time(self, v):
+        if isinstance(v, int):
+            self._time = v
 
 
 def calHash(url: dict, item: dict) -> HashEntry:
