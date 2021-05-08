@@ -208,7 +208,7 @@ PRIMARY KEY (hash)
             cur = self._db.execute(f'SELECT * FROM RSSList;')
             r = []
             for i in cur:
-                temp = RSSEntry(i, self._main._setting._maxCount)
+                temp = RSSEntry(i, self._main._setting.maxCount)
                 cur2 = self._db.execute(
                     f'SELECT * FROM chatList WHERE id=?;', (temp.id,))
                 for i2 in cur2:
@@ -230,7 +230,7 @@ PRIMARY KEY (hash)
                 f"SELECT RSSList.title, RSSList.url, RSSList.interval, RSSList.lastupdatetime, RSSList.id, RSSList.lasterrortime, RSSList.forceupdate, RSSList.errorcount, chatList.config FROM RSSList, chatList WHERE chatList.chatId = ? AND RSSList.id = chatList.id ORDER BY title;", (chatId,))
             RSSEntries = []
             for i in cur:
-                rssEntry = RSSEntry(i, self._main._setting._maxCount)
+                rssEntry = RSSEntry(i, self._main._setting.maxCount)
                 rssEntry.chatList.append(ChatEntry((chatId, i[4], i[8])))
                 RSSEntries.append(rssEntry)
             return RSSEntries
@@ -369,7 +369,7 @@ PRIMARY KEY (hash)
                     f'SELECT * FROM RSSList WHERE id=?;', (hashd,))
                 has_data = False
                 for i in cur:
-                    rss = RSSEntry(i, self._main._setting._maxCount)
+                    rss = RSSEntry(i, self._main._setting.maxCount)
                     has_data = True
                     break
                 if not has_data:

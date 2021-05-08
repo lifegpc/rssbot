@@ -48,10 +48,10 @@ def getTextContentForRSSInList(rssEntry: RSSEntry, s: settings) -> str:
     text.addtotext(
         f"""<a href="{rssEntry.url}">{rssEntry.title}</a>""")
     ttl = 0 if rssEntry.interval is None else rssEntry.interval
-    ttl = max(min(ttl, s._maxTTL), s._minTTL)
+    ttl = max(min(ttl, s.maxTTL), s.minTTL)
     temp = f'更新间隔：{ttl}分'
     if rssEntry.lasterrortime is not None and rssEntry.lasterrortime >= rssEntry.lastupdatetime and rssEntry.errorcount > 0:
-        temp = f'{temp}({s._retryTTL[rssEntry.errorcount]}分)'
+        temp = f'{temp}({s.retryTTL[rssEntry.errorcount]}分)'
     text.addtotext(temp)
     temp = '上次更新时间：未知' if rssEntry.lastupdatetime is None or rssEntry.lastupdatetime < 0 else f'上次更新时间：{timeToStr(rssEntry.lastupdatetime)}'
     text.addtotext(temp)

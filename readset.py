@@ -55,6 +55,54 @@ class settings:
         self._botOwnerList = BotOwnerList(
             self._main, d['botOwnerList']) if 'botOwnerList' in d and d['botOwnerList'] != '' else BotOwnerList(self._main)
 
+    @property
+    def token(self) -> str:
+        return self._token
+
+    @property
+    def maxCount(self) -> int:
+        return self._maxCount
+
+    @property
+    def minTTL(self) -> int:
+        return self._minTTL
+
+    @property
+    def maxTTL(self) -> int:
+        return self._maxTTL
+
+    @property
+    def maxRetryCount(self) -> int:
+        return self._maxRetryCount
+
+    @property
+    def telegramBotApiServer(self) -> str:
+        return self._telegramBotApiServer
+
+    @property
+    def downloadMediaFile(self) -> bool:
+        return self._downloadMediaFile
+
+    @property
+    def sendFileURLScheme(self) -> bool:
+        return self._sendFileURLScheme
+
+    @property
+    def rssbotLib(self) -> str:
+        return self._rssbotLib
+
+    @property
+    def databaseLocation(self) -> str:
+        return self._databaseLocation
+
+    @property
+    def retryTTL(self) -> RetryTTLList:
+        return self._retryTTL
+
+    @property
+    def botOwnerList(self) -> BotOwnerList:
+        return self._botOwnerList
+
 
 class commandline:
     def __init__(self, commandline: List[str] = None):
@@ -74,3 +122,11 @@ class commandline:
                 self._rebuildHashlist = True
             if i[0] == '--exit-after-rebuild':
                 self._exitAfterRebuild = True
+
+    @property
+    def rebuildHashlist(self):
+        return self._rebuildHashlist
+
+    @property
+    def exitAfterRebuild(self):
+        return self._exitAfterRebuild

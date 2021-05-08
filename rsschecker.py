@@ -24,21 +24,21 @@ from os import _exit
 class RSSCheckerThread(Thread):
     def __loop(self):
         for rss in self._main._db.getAllRSSList():
-            if self.__needUpdate(rss) or self._main._commandLine._rebuildHashlist:
+            if self.__needUpdate(rss) or self._main._commandLine.rebuildHashlist:
                 try:
                     p = RSSParser()
                     p.parse(rss.url)
                     updateTime = int(time())
                     if p.check():
                         meta = p.m
-                        itemList = p.itemList[:self._main._setting._maxCount]
+                        itemList = p.itemList[:self._main._setting.maxCount]
                         itemList.reverse()
-                        if self._main._commandLine._rebuildHashlist:
+                        if self._main._commandLine.rebuildHashlist:
                             rss.hashList = HashEntries(
-                                self._main._setting._maxCount)
+                                self._main._setting.maxCount)
                         for item in itemList:
                             hashEntry = calHash(rss.url, item)
-                            if self._main._commandLine._rebuildHashlist:
+                            if self._main._commandLine.rebuildHashlist:
                                 rss.hashList.add(hashEntry)
                                 continue
                             if not rss.hashList.has(hashEntry):
@@ -65,9 +65,9 @@ class RSSCheckerThread(Thread):
                     self._main._db.updateRSSWithError(rss.url, int(time()))
                 if rss.forceupdate:
                     self._main._db.setRSSForceUpdate(rss.url, False)
-        if self._main._commandLine._rebuildHashlist and self._main._commandLine._exitAfterRebuild:
+        if self._main._commandLine.rebuildHashlist and self._main._commandLine.exitAfterRebuild:
             _exit(0)
-        self._main._commandLine._rebuildHashlist = False
+        self._main._commandLine.rebuildHashlist = False
         self._main._tempFileEntries.clear()
 
     def __init__(self, m):
@@ -79,13 +79,13 @@ class RSSCheckerThread(Thread):
         if rss.forceupdate:
             return True
         if rss.lasterrortime is not None and rss.lasterrortime >= rss.lastupdatetime and rss.errorcount > 0:
-            return True if int(time()) > rss.lasterrortime + self._main._setting._retryTTL[rss.errorcount] * 60 else False
+            return True if int(time()) > rss.lasterrortime + self._main._setting.retryTTL[rss.errorcount] * 60 else False
         if rss.lastupdatetime is None:
             return True
-        TTL = self._main._setting._minTTL
+        TTL = self._main._setting.minTTL
         if rss.interval is not None:
-            TTL = max(min(rss.interval, self._main._setting._maxTTL),
-                      self._main._setting._minTTL)
+            TTL = max(min(rss.interval, self._main._setting.maxTTL),
+                      self._main._setting.minTTL)
         TTL = TTL * 60
         return True if int(time()) > rss.lastupdatetime + TTL else False
 
