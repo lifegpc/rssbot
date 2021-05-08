@@ -118,6 +118,7 @@ class database:
                         'INSERT INTO hashList VALUES (?, ?, ?);', tuple(l))
                 self._db.execute('DROP TABLE hashList_old;')
                 self._db.commit()
+            self._db.execute('VACUUM;')
             self.__updateExistsTable()
             self.__write_version()
         return True
