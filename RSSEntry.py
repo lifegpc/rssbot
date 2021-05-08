@@ -153,29 +153,81 @@ class HashEntries:
 
 class RSSEntry:
     def __init__(self, data=None, maxCount: int = 100):
-        self.title = None
+        self._title = None
         if data is not None and data[0] is not None:
-            self.title = data[0]
-        self.url = None
+            self._title = data[0]
+        self._url = None
         if data is not None and data[1] is not None:
-            self.url = data[1]
-        self.interval = None
+            self._url = data[1]
+        self._interval = None
         if data is not None and data[2] is not None:
-            self.interval = data[2]
-        self.lastupdatetime = None
+            self._interval = data[2]
+        self._lastupdatetime = None
         if data is not None and data[3] is not None:
-            self.lastupdatetime = data[3]
-        self.id = None
+            self._lastupdatetime = data[3]
+        self._id = None
         if data is not None and data[4] is not None:
-            self.id = data[4]
-        self.lasterrortime = None
+            self._id = data[4]
+        self._lasterrortime = None
         if data is not None and data[5] is not None:
-            self.lasterrortime = data[5]
-        self.forceupdate = False
+            self._lasterrortime = data[5]
+        self._forceupdate = False
         if data is not None and data[6] is not None:
-            self.forceupdate = bool(data[6])
-        self.errorcount = 0
+            self._forceupdate = bool(data[6])
+        self._errorcount = 0
         if data is not None and data[7] is not None:
-            self.errorcount = data[7]
+            self._errorcount = data[7]
         self.chatList = []
         self.hashList = HashEntries(maxCount)
+
+    @property
+    def title(self) -> str:
+        return self._title
+
+    @property
+    def url(self) -> str:
+        return self._url
+
+    @property
+    def interval(self) -> int:
+        if self._interval is None:
+            return None
+        if isinstance(self._interval, int):
+            return self._interval
+        else:
+            raise ValueError('interval must be int.')
+
+    @property
+    def lastupdatetime(self) -> int:
+        if self._lastupdatetime is None:
+            return None
+        if isinstance(self._lastupdatetime, int):
+            return self._lastupdatetime
+        else:
+            raise ValueError('lastupdatetime must be int.')
+
+    @property
+    def id(self) -> str:
+        return self._id
+
+    @property
+    def lasterrortime(self) -> int:
+        if self._lasterrortime is None:
+            return None
+        if isinstance(self._lasterrortime, int):
+            return self._lasterrortime
+        else:
+            raise ValueError('lasterrortime must be int.')
+
+    @property
+    def forceupdate(self) -> bool:
+        return self._forceupdate
+
+    @property
+    def errorcount(self) -> int:
+        if self._errorcount is None:
+            return None
+        if isinstance(self._errorcount, int):
+            return self._errorcount
+        else:
+            raise ValueError('errorcount must be int.')
