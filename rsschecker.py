@@ -67,7 +67,7 @@ class RSSCheckerThread(Thread):
                     self._main._db.setRSSForceUpdate(rss.url, False)
         if self._main._commandLine.rebuildHashlist and self._main._commandLine.exitAfterRebuild:
             _exit(0)
-        self._main._commandLine._rebuildHashlist = False
+        self._main._commandLine.rebuildHashlist = False
         self._main._tempFileEntries.clear()
 
     def __init__(self, m):

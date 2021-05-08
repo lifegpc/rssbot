@@ -127,6 +127,11 @@ class commandline:
     def rebuildHashlist(self):
         return self._rebuildHashlist
 
+    @rebuildHashlist.setter
+    def rebuildHashlist(self, v):
+        if isinstance(v, bool):
+            self._rebuildHashlist = v
+
     @property
     def exitAfterRebuild(self):
         return self._exitAfterRebuild
