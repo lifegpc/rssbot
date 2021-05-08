@@ -31,6 +31,28 @@ v3 INT,
 v4 INT,
 PRIMARY KEY (id)
 );'''
+RSSLIST_TABLE = '''CREATE TABLE RSSList (
+title TEXT,
+url TEXT,
+interval INT,
+lastupdatetime INT,
+id INTEGER,
+lasterrortime INT,
+forceupdate BOOLEAN,
+errorcount INT,
+PRIMARY KEY (id)
+);'''
+CHATLIST_TABLE = '''CREATE TABLE chatList (
+chatId INT,
+id INT,
+config TEXT
+)'''
+HASHLIST_TABLE = '''CREATE TABLE hashList (
+id INT,
+hash TEXT,
+time INT,
+PRIMARY KEY (hash)
+)'''
 
 
 @unique
@@ -48,16 +70,54 @@ class database:
         if v < self._version:
             if v == [1, 0, 0, 0]:
                 self._db.execute('ALTER TABLE RSSList ADD lasterrortime INT;')
+                self._db.commit()
             if v < [1, 0, 0, 2]:
                 self._db.execute(
                     'ALTER TABLE RSSList ADD forceupdate BOOLEAN;')
                 self._db.execute('UPDATE RSSList SET forceupdate=false;')
+                self._db.commit()
             if v < [1, 0, 0, 3]:
                 self._db.execute('ALTER TABLE RSSList ADD errorcount INT;')
                 self._db.execute('UPDATE RSSList SET errorcount=0;')
+                self._db.commit()
             if v < [1, 0, 0, 4]:
                 self._db.execute('DROP TABLE config;')
                 self._db.execute(VERSION_TABLE)
+                self._db.commit()
+            if v < [1, 0, 0, 5]:
+                cur = self._db.execute('SELECT * FROM RSSList;')
+                self._db.execute('ALTER TABLE RSSList RENAME TO RSSList_old;')
+                k = 0
+                m = {}
+                self._db.execute(RSSLIST_TABLE)
+                for i in cur:
+                    m[i[4]] = k
+                    l = list(i)
+                    l[4] = k
+                    self._db.execute(
+                        'INSERT INTO RSSList VALUES (?, ?, ?, ?, ?, ?, ?, ?);',
+                        tuple(l))
+                    k += 1
+                self._db.execute('DROP TABLE RSSList_old;')
+                cur = self._db.execute('SELECT * FROM chatList;')
+                self._db.execute('ALTER TABLE chatList RENAME TO chatList_old;')
+                self._db.execute(CHATLIST_TABLE)
+                for i in cur:
+                    l = list(i)
+                    l[1] = m[i[1]]
+                    self._db.execute(
+                        'INSERT INTO chatList VALUES (?, ?, ?);', tuple(l))
+                self._db.execute('DROP TABLE chatList_old;')
+                cur = self._db.execute('SELECT * FROM hashList;')
+                self._db.execute('ALTER TABLE hashList RENAME TO hashList_old;')
+                self._db.execute(HASHLIST_TABLE)
+                for i in cur:
+                    l = list(i)
+                    l[0] = m[i[0]]
+                    self._db.execute(
+                        'INSERT INTO hashList VALUES (?, ?, ?);', tuple(l))
+                self._db.execute('DROP TABLE hashList_old;')
+                self._db.commit()
             self.__updateExistsTable()
             self.__write_version()
         return True
@@ -67,23 +127,9 @@ class database:
             self._db.execute(VERSION_TABLE)
             self.__write_version()
         if 'RSSList' not in self._exist_tables:
-            self._db.execute(f'''CREATE TABLE RSSList (
-title TEXT,
-url TEXT,
-interval INT,
-lastupdatetime INT,
-id TEXT,
-lasterrortime INT,
-forceupdate BOOLEAN,
-errorcount INT,
-PRIMARY KEY (id)
-);''')
+            self._db.execute(RSSLIST_TABLE)
         if 'chatList' not in self._exist_tables:
-            self._db.execute('''CREATE TABLE chatList (
-chatId INT,
-id TEXT,
-config TEXT
-)''')
+            self._db.execute(CHATLIST_TABLE)
         if 'userStatus' not in self._exist_tables:
             self._db.execute('''CREATE TABLE userStatus (
 userId INT,
@@ -92,16 +138,11 @@ hashd TEXT,
 PRIMARY KEY (userId)
 )''')
         if 'hashList' not in self._exist_tables:
-            self._db.execute('''CREATE TABLE hashList (
-id TEXT,
-hash TEXT,
-time INT,
-PRIMARY KEY (hash)
-)''')
+            self._db.execute(HASHLIST_TABLE)
         self._db.commit()
 
     def __init__(self, m, loc: str):
-        self._version = [1, 0, 0, 4]
+        self._version = [1, 0, 0, 5]
         self._value_lock = Lock()
         self._db = sqlite3.connect(loc, check_same_thread=False)
         ok = self.__check_database()
@@ -116,7 +157,7 @@ PRIMARY KEY (hash)
         else:
             return False
 
-    def __removeRSSEntry(self, id: str) -> bool:
+    def __removeRSSEntry(self, id: int) -> bool:
         try:
             self._db.execute(f'DELETE FROM RSSList WHERE id=?;', (id,))
             self._db.execute(f'DELETE FROM hashList WHERE id=?;', (id,))
@@ -136,6 +177,8 @@ PRIMARY KEY (hash)
         self._db.commit()
 
     def __read_version(self) -> List[int]:
+        if 'version' not in self._exist_tables:
+            return None
         if self.__isNewVersionType():
             cur = self._db.execute("SELECT * FROM version WHERE id='main';")
             for i in cur:
@@ -155,21 +198,25 @@ PRIMARY KEY (hash)
     def addRSSList(self, title: str, url: str, chatId: int, config: RSSConfig, ttl: int = None, hashEntries: HashEntries = None):
         with self._value_lock:
             try:
-                hashd = sha256WithBase64(url)
                 cur = self._db.execute(
-                    f'SELECT * FROM RSSList WHERE id=?;', (hashd,))
+                    f'SELECT * FROM RSSList WHERE url=?;', (url,))
                 has_data = False
-                for i in cur:  # pylint: disable=unused-variable
+                for i in cur:
                     has_data = True
-                    break
+                    hashd = i[4]
                 if has_data:
                     self._db.execute(
                         f"UPDATE RSSList SET title=?, interval=? WHERE id=?;",
                         (title, ttl, hashd))
                 else:
                     self._db.execute(
-                        f"INSERT INTO RSSList VALUES (?, ?, ?, ?, ?, null, false, 0);",
-                        (title, url, ttl, int(time()), hashd))
+                        f"INSERT INTO RSSList (title, url, interval, lastupdatetime, lasterrortime, forceupdate, errorcount) VALUES (?, ?, ?, ?, null, false, 0);",
+                        (title, url, ttl, int(time())))
+                    cur = self._db.execute(
+                        'SELECT * FROM RSSList WHERE url=?;', (url,))
+                    for i in cur:
+                        hashd = i[4]
+                        break
                 cur = self._db.execute(
                     f'SELECT * FROM chatList WHERE id=? AND chatId=?;',
                     (hashd, chatId))
@@ -197,7 +244,7 @@ PRIMARY KEY (hash)
                     for v in hashEntries.getList():
                         self._db.execute(
                             f"INSERT INTO hashList VALUES (?, ?, ?);",
-                            (v.id, v.hash, v.time))
+                            (hashd, v.hash, v.time))
                 self._db.commit()
                 return True
             except:
@@ -246,7 +293,7 @@ PRIMARY KEY (hash)
                 pass
             return userStatus.normalStatus, ''
 
-    def removeItemInChatList(self, chatId: int, id: str):
+    def removeItemInChatList(self, chatId: int, id: int):
         with self._value_lock:
             try:
                 self._db.execute(
@@ -257,10 +304,10 @@ PRIMARY KEY (hash)
             except:
                 return False
 
-    def setRSSForceUpdate(self, url: str, forceupdate: bool) -> bool:
+    def setRSSForceUpdate(self, id: int, forceupdate: bool) -> bool:
         with self._value_lock:
             try:
-                hashd = sha256WithBase64(url)
+                hashd = id
                 cur = self._db.execute(
                     f'SELECT * FROM RSSList WHERE id=?;', (hashd,))
                 has_data = False
@@ -328,10 +375,10 @@ PRIMARY KEY (hash)
             except:
                 return False
 
-    def updateRSS(self, title: str, url: str, lastupdatetime: int, hashEntries: HashEntries, ttl: int = None):
+    def updateRSS(self, title: str, id: int, lastupdatetime: int, hashEntries: HashEntries, ttl: int = None):
         with self._value_lock:
             try:
-                hashd = sha256WithBase64(url)
+                hashd = id
                 cur = self._db.execute(
                     f'SELECT * FROM RSSList WHERE id=?;', (hashd,))
                 has_data = False
@@ -361,10 +408,10 @@ PRIMARY KEY (hash)
             except:
                 return False
 
-    def updateRSSWithError(self, url: str, lasterrortime: int):
+    def updateRSSWithError(self, id: int, lasterrortime: int):
         with self._value_lock:
             try:
-                hashd = sha256WithBase64(url)
+                hashd = id
                 cur = self._db.execute(
                     f'SELECT * FROM RSSList WHERE id=?;', (hashd,))
                 has_data = False

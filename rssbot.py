@@ -991,7 +991,7 @@ class callbackQueryHandle(Thread):
                 tempList = self._rssMeta.itemList.copy()
                 tempList.reverse()
                 for v in tempList[-self._main._setting.maxCount:]:
-                    hashEntries.add(calHash(url, v))
+                    hashEntries.add(calHash(None, url, v))
                 suc = self._main._db.addRSSList(
                     title, url, chatId, config, ttl, hashEntries)
                 if suc:
@@ -1315,7 +1315,7 @@ class callbackQueryHandle(Thread):
                 rssList = self._main._db.getRSSListByChatId(chatId)
                 ind = int(self._inputList[3])
                 ind = max(min(ind, len(rssList)), 0)
-                if self._main._db.setRSSForceUpdate(rssList[ind].url, True):
+                if self._main._db.setRSSForceUpdate(rssList[ind].id, True):
                     self.answer('已发送强制更新请求。')
                 else:
                     self.answer('发送强制更新请求失败。')

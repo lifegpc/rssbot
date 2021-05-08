@@ -37,7 +37,7 @@ class RSSCheckerThread(Thread):
                             rss.hashList = HashEntries(
                                 self._main._setting.maxCount)
                         for item in itemList:
-                            hashEntry = calHash(rss.url, item)
+                            hashEntry = calHash(rss.id, rss.url, item)
                             if self._main._commandLine.rebuildHashlist:
                                 rss.hashList.add(hashEntry)
                                 continue
@@ -59,12 +59,12 @@ class RSSCheckerThread(Thread):
                     else:
                         raise ValueError('Unknown RSS.')
                     self._main._db.updateRSS(
-                        p.title, rss.url, updateTime, rss.hashList, p.ttl)
+                        p.title, rss.id, updateTime, rss.hashList, p.ttl)
                 except:
                     print(format_exc())
-                    self._main._db.updateRSSWithError(rss.url, int(time()))
+                    self._main._db.updateRSSWithError(rss.id, int(time()))
                 if rss.forceupdate:
-                    self._main._db.setRSSForceUpdate(rss.url, False)
+                    self._main._db.setRSSForceUpdate(rss.id, False)
         if self._main._commandLine.rebuildHashlist and self._main._commandLine.exitAfterRebuild:
             _exit(0)
         self._main._commandLine.rebuildHashlist = False

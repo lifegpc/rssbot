@@ -40,12 +40,12 @@ class ChatEntry:
             raise ValueError('chatId must be int.')
 
     @property
-    def id(self) -> str:
+    def id(self) -> int:
         return self._id
 
 
 class HashEntry:
-    def __init__(self, data=None, id: str = None, hash: str = None):
+    def __init__(self, data=None, id: int = None, hash: str = None):
         self._id = data[0] if data is not None and data[0] is not None else None
         self._hash = data[1] if data is not None and data[1] is not None else None
         self._time = data[2] if data is not None and data[2] is not None else time_ns()
@@ -55,7 +55,7 @@ class HashEntry:
             self._hash = hash
 
     @property
-    def id(self) -> str:
+    def id(self) -> int:
         return self._id
 
     @property
@@ -77,8 +77,7 @@ class HashEntry:
             self._time = v
 
 
-def calHash(url: dict, item: dict) -> HashEntry:
-    hashd = sha256WithBase64(url)
+def calHash(id: int, url: dict, item: dict) -> HashEntry:
     hasht = url
     if 'title' in item and item['title'] is not None:
         hasht = hasht + item['title']
@@ -97,7 +96,7 @@ def calHash(url: dict, item: dict) -> HashEntry:
     if not matched and 'description' in item and item['description'] is not None:
         hasht = hasht + item['description']
     hashed = sha256WithBase64(hasht)
-    return HashEntry(id=hashd, hash=hashed)
+    return HashEntry(id=id, hash=hashed)
 
 
 class HashEntries:
@@ -115,10 +114,10 @@ class HashEntries:
         self.__list.sort(key=lambda d: d.time, reverse=reverse)
 
     def add(self, d: HashEntry):
-        if d.hash is not None and d.id is not None:
+        if d.hash is not None:
             o = None
             for v in self.__list:
-                if v.hash == d.hash and v.id == d.id:
+                if v.hash == d.hash:
                     if d.time > v.time:
                         o = v
                         break
@@ -207,7 +206,7 @@ class RSSEntry:
             raise ValueError('lastupdatetime must be int.')
 
     @property
-    def id(self) -> str:
+    def id(self) -> int:
         return self._id
 
     @property
