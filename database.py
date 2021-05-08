@@ -274,6 +274,15 @@ PRIMARY KEY (userId)
                     r.append(temp)
             return r
 
+    def getRSSByIdAndChatId(self, id: int, chatId: int) -> RSSEntry:
+        while self._value_lock:
+            cur = self._db.execute('SELECT RSSList.title, RSSList.url, RSSList.interval, RSSList.lastupdatetime, RSSList.id, RSSList.lasterrortime, RSSList.forceupdate, RSSList.errorcount, chatList.config FROM chatList INNER JOIN RSSList ON RSSList.id = chatList.id WHERE chatList.chatId = ? AND chatlist.id = ?;', (chatId, id))
+            for i in cur:
+                rss = RSSEntry(i, self._main._setting.maxCount)
+                rss.chatList.append(ChatEntry((chatId, i[4], i[8])))
+                return rss
+            return None
+
     def getRSSListByChatId(self, chatId: int) -> List[RSSEntry]:
         with self._value_lock:
             cur = self._db.execute(

@@ -1204,14 +1204,18 @@ class callbackQueryHandle(Thread):
             elif self._inlineKeyBoardForRSSListCommand in [InlineKeyBoardForRSSList.Content, InlineKeyBoardForRSSList.CancleUnsubscribe, InlineKeyBoardForRSSList.BackToContentPage]:
                 di = {'chat_id': self._data['message']['chat']['id'],
                       'message_id': self._data['message']['message_id']}
-                rssList = self._main._db.getRSSListByChatId(chatId)
                 ind = int(self._inputList[3])
-                ind = max(min(ind, len(rssList)), 0)
+                ind = max(ind, 0)
+                rssId = int(self._inputList[4])
+                rss = self._main._db.getRSSByIdAndChatId(rssId, chatId)
+                if rss is None:
+                    self.answer('找不到该RSS。')
+                    return
                 di['text'] = getTextContentForRSSInList(
-                    rssList[ind], self._main._setting)
+                    rss, self._main._setting)
                 di['parse_mode'] = 'HTML'
                 di['reply_markup'] = getInlineKeyBoardForRSSInList(
-                    chatId, rssList[ind], ind, self._main._setting.botOwnerList.isOwner(self._fromUserId))
+                    chatId, rss, ind, self._main._setting.botOwnerList.isOwner(self._fromUserId))
                 self._main._request("editMessageText", "post", json=di)
                 self.answer()
                 return
@@ -1231,12 +1235,16 @@ class callbackQueryHandle(Thread):
                       'message_id': self._data['message']['message_id']}
                 rssList = self._main._db.getRSSListByChatId(chatId)
                 ind = int(self._inputList[3])
-                ind = max(min(ind, len(rssList)), 0)
-                di['text'] = getTextContentForRSSUnsubscribeInList(
-                    rssList[ind])
+                ind = max(ind, 0)
+                rssId = int(self._inputList[4])
+                rss = self._main._db.getRSSByIdAndChatId(rssId, chatId)
+                if rss is None:
+                    self.answer('找不到该RSS。')
+                    return
+                di['text'] = getTextContentForRSSUnsubscribeInList(rss)
                 di['parse_mode'] = 'HTML'
                 di['reply_markup'] = getInlineKeyBoardForRSSUnsubscribeInList(
-                    chatId, rssList[ind], ind)
+                    chatId, rss, ind)
                 self._main._request("editMessageText", "post", json=di)
                 self.answer()
                 return
@@ -1245,11 +1253,13 @@ class callbackQueryHandle(Thread):
                       'message_id': self._data['message']['message_id']}
                 rssList = self._main._db.getRSSListByChatId(chatId)
                 ind = int(self._inputList[3])
-                if ind >= len(rssList) or ind < 0:
-                    self.answer('取消订阅失败：无效的索引。')
+                rssId = int(self._inputList[4])
+                rss = self._main._db.getRSSByIdAndChatId(rssId, chatId)
+                if rss is None:
+                    self.answer('取消订阅失败：找不到该RSS。')
                 else:
                     unsubscribed = self._main._db.removeItemInChatList(
-                        chatId, rssList[ind].id)
+                        chatId, rss.id)
                     if unsubscribed:
                         self.answer('取消订阅成功。')
                         ind = ind - 1
@@ -1265,14 +1275,18 @@ class callbackQueryHandle(Thread):
             elif self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.SettingsPage:
                 di = {'chat_id': self._data['message']['chat']['id'],
                       'message_id': self._data['message']['message_id']}
-                rssList = self._main._db.getRSSListByChatId(chatId)
                 ind = int(self._inputList[3])
-                ind = max(min(ind, len(rssList)), 0)
+                ind = max(ind, 0)
+                rssId = int(self._inputList[4])
+                rss = self._main._db.getRSSByIdAndChatId(rssId, chatId)
+                if rss is None:
+                    self.answer('找不到该RSS。')
+                    return
                 di['text'] = getTextContentForRSSInList(
-                    rssList[ind], self._main._setting)
+                    rss, self._main._setting)
                 di['parse_mode'] = 'HTML'
                 di['reply_markup'] = getInlineKeyBoardForRSSSettingsInList(
-                    chatId, rssList[ind], ind)
+                    chatId, rss, ind)
                 self._main._request("editMessageText", "post", json=di)
                 self.answer()
                 return
@@ -1281,8 +1295,12 @@ class callbackQueryHandle(Thread):
                       'message_id': self._data['message']['message_id']}
                 rssList = self._main._db.getRSSListByChatId(chatId)
                 ind = int(self._inputList[3])
-                ind = max(min(ind, len(rssList)), 0)
-                rssEntry = rssList[ind]
+                ind = max(ind, 0)
+                rssId = int(self._inputList[4])
+                rssEntry = self._main._db.getRSSByIdAndChatId(rssId, chatId)
+                if rssEntry is None:
+                    self.answer('找不到该RSS。')
+                    return
                 chatEntry: ChatEntry = rssEntry.chatList[0]
                 config = chatEntry.config
                 if self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.DisableWebPagePreview:
@@ -1300,33 +1318,40 @@ class callbackQueryHandle(Thread):
                     self.answer('修改设置成功')
                 else:
                     self.answer('修改设置失败')
-                rssList = self._main._db.getRSSListByChatId(chatId)
-                ind = max(min(ind, len(rssList)), 0)
+                rss = self._main._db.getRSSByIdAndChatId(rssId, chatId)
+                if rss is None:
+                    self.answer('找不到该RSS。')
+                    return
                 di['text'] = getTextContentForRSSInList(
-                    rssList[ind], self._main._setting)
+                    rss, self._main._setting)
                 di['parse_mode'] = 'HTML'
                 di['reply_markup'] = getInlineKeyBoardForRSSSettingsInList(
-                    chatId, rssList[ind], ind)
+                    chatId, rss, ind)
                 self._main._request("editMessageText", "post", json=di)
                 return
             elif self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.ForceUpdate:
                 di = {'chat_id': self._data['message']['chat']['id'],
                       'message_id': self._data['message']['message_id']}
-                rssList = self._main._db.getRSSListByChatId(chatId)
                 ind = int(self._inputList[3])
-                ind = max(min(ind, len(rssList)), 0)
-                if self._main._db.setRSSForceUpdate(rssList[ind].id, True):
+                ind = max(ind, 0)
+                rssId = int(self._inputList[4])
+                rss = self._main._db.getRSSByIdAndChatId(rssId, chatId)
+                if rss is None:
+                    self.answer('找不到该RSS。')
+                    return
+                if self._main._db.setRSSForceUpdate(rss.id, True):
                     self.answer('已发送强制更新请求。')
                 else:
                     self.answer('发送强制更新请求失败。')
-                rssList = self._main._db.getRSSListByChatId(chatId)
-                ind = int(self._inputList[3])
-                ind = max(min(ind, len(rssList)), 0)
+                rss = self._main._db.getRSSByIdAndChatId(rssId, chatId)
+                if rss is None:
+                    self.answer('找不到该RSS。')
+                    return
                 di['text'] = getTextContentForRSSInList(
-                    rssList[ind], self._main._setting)
+                    rss, self._main._setting)
                 di['parse_mode'] = 'HTML'
                 di['reply_markup'] = getInlineKeyBoardForRSSInList(
-                    chatId, rssList[ind], ind, self._main._setting.botOwnerList.isOwner(self._fromUserId))
+                    chatId, rss, ind, self._main._setting.botOwnerList.isOwner(self._fromUserId))
                 self._main._request("editMessageText", "post", json=di)
                 return
         else:

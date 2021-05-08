@@ -96,7 +96,7 @@ def getInlineKeyBoardForRSSList(chatId: int, RSSEntries: List[RSSEntry], page: i
             d.append([])
             i = i + 1
             d[i].append(
-                {'text': rss.title, 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.Content.value},{s}'})
+                {'text': rss.title, 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.Content.value},{s},{rss.id}'})
             s = s + 1
         if pn != 1:
             d.append([])
@@ -128,16 +128,16 @@ def getInlineKeyBoardForRSSInList(chatId: int, rssEntry: RSSEntry, index: int, i
     d.append([])
     i = i + 1
     d[i].append(
-        {'text': '取消订阅', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.Unsubscribe.value},{index}'})
+        {'text': '取消订阅', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.Unsubscribe.value},{index},{rssEntry.id}'})
     if not rssEntry.forceupdate and isOwner:
         d.append([])
         i = i + 1
         d[i].append(
-            {'text': '强制更新', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.ForceUpdate.value},{index}'})
+            {'text': '强制更新', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.ForceUpdate.value},{index},{rssEntry.id}'})
     d.append([])
     i = i + 1
     d[i].append(
-        {'text': '设置', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.SettingsPage.value},{index}'})
+        {'text': '设置', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.SettingsPage.value},{index},{rssEntry.id}'})
     d.append([])
     i = i + 1
     d[i].append(
@@ -151,9 +151,9 @@ def getInlineKeyBoardForRSSUnsubscribeInList(chatId: int, rssEntry: RSSEntry, in
     d.append([])
     i = i + 1
     d[i].append(
-        {'text': '是', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.ConfirmUnsubscribe.value},{index}'})
+        {'text': '是', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.ConfirmUnsubscribe.value},{index},{rssEntry.id}'})
     d[i].append(
-        {'text': '否', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.CancleUnsubscribe.value},{index}'})
+        {'text': '否', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.CancleUnsubscribe.value},{index},{rssEntry.id}'})
     return {'inline_keyboard': d}
 
 
@@ -169,25 +169,25 @@ def getInlineKeyBoardForRSSSettingsInList(chatId: int, rssEntry: RSSEntry, index
         i = i + 1
         temp = '启用预览' if config.disable_web_page_preview else '禁用预览'
         d[i].append(
-            {'text': temp, 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.DisableWebPagePreview.value},{index}'})
+            {'text': temp, 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.DisableWebPagePreview.value},{index},{rssEntry.id}'})
         temp = '隐藏RSS标题' if config.show_RSS_title else '显示RSS标题'
         d[i].append(
-            {'text': temp, 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.ShowRSSTitle.value},{index}'})
+            {'text': temp, 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.ShowRSSTitle.value},{index},{rssEntry.id}'})
         d.append([])
         i = i + 1
         temp = '隐藏内容标题' if config.show_Content_title else '显示内容标题'
         d[i].append(
-            {'text': temp, 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.ShowContentTitle.value},{index}'})
+            {'text': temp, 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.ShowContentTitle.value},{index},{rssEntry.id}'})
         temp = '隐藏内容' if config.show_content else '显示内容'
         d[i].append(
-            {'text': temp, 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.ShowContent.value},{index}'})
+            {'text': temp, 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.ShowContent.value},{index},{rssEntry.id}'})
         d.append([])
         i = i + 1
         temp = '禁用发送媒体' if config.send_media else '启用发送媒体'
         d[i].append(
-            {'text': temp, 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.SendMedia.value},{index}'})
+            {'text': temp, 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.SendMedia.value},{index},{rssEntry.id}'})
     d.append([])
     i = i + 1
     d[i].append(
-        {'text': '返回', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.BackToContentPage.value},{index}'})
+        {'text': '返回', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.BackToContentPage.value},{index},{rssEntry.id}'})
     return {'inline_keyboard': d}
