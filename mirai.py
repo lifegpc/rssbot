@@ -64,7 +64,7 @@ def version_1_11_0_needed(f):
     return o
 
 
-def admin_needed(ind = 1):
+def admin_needed(ind=1):
     "ind: 第i+1个参数是groupId"
     def i(f):
         @wraps(f)
@@ -149,6 +149,30 @@ class Mirai:
             return r
         except:
             return None
+
+    def _groupFileInfo(self, sessionKey: str, group: int, id: str):
+        r = self._get("/groupFileInfo", {"sessionKey": sessionKey,
+                                         "target": group, "id": id})
+        if r is None:
+            return None
+        return r.json()
+
+    def _groupFileList(self, sessionKey: str, group: int, dir: str = None):
+        d = {"sessionKey": sessionKey, "target": group}
+        if dir is not None:
+            d['dir'] = dir
+        r = self._get("/groupFileList", d)
+        if r is None:
+            return None
+        return r.json()
+
+    def _groupFileRename(self, sessionKey: str, group: int, id: str,
+                         rename: str):
+        r = self._post("/groupFileRename", {"sessionKey": sessionKey, "target":
+                                            group, "id": id, "rename": rename})
+        if r is None:
+            return None
+        return r.json()
 
     def _groupList(self, sessionKey: str):
         r = self._get("/groupList", {"sessionKey": sessionKey})
@@ -283,6 +307,25 @@ class Mirai:
     def friendList(self):
         "获取bot的好友列表"
         return self._friendList(self._kses.sessionId)
+
+    @login_required
+    @version_1_11_0_needed
+    def groupFileInfo(self, group: int, id: str):
+        "获取群文件详细信息"
+        return self._groupFileInfo(self._kses.sessionId, group, id)
+
+    @login_required
+    @version_1_11_0_needed
+    def groupFileList(self, group: int, dir: str = None):
+        "获取群文件列表"
+        return self._groupFileList(self._kses.sessionId, group, dir)
+
+    @login_required
+    @version_1_11_0_needed
+    @admin_needed()
+    def groupFileRename(self, group: int, id: str, rename: str):
+        "重命名群文件/目录"
+        return self._groupFileRename(self._kses.sessionId, group, id, rename)
 
     @login_required
     def groupList(self):
