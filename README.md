@@ -1,3 +1,5 @@
+This branch is only used for report bug. Please use master branch.
+该分支仅用来提报BUG。请使用master分支。
 # Telegram RSS Bot
 - [开始使用](#开始使用)
 - [配置](#配置)

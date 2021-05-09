@@ -30,22 +30,21 @@ class LoginRequiredError(Exception):
 def login_required(f):
     @wraps(f)
     def o(*l, **k):
-        while True:
-            m: Mirai = l[0]
-            if m._logined:
-                db: MiraiDatabase = m._db
-                v = f(*l, **k)
-                if v is not None:
-                    if v['code'] > 0 and v['code'] <= 4:
-                        db.removeSession(m._kses.sessionId)
-                        m._logined = False
-                        m.login()
-                        continue
-                m._kses.lastedUsedTime = m._lastRequestTime
-                db.setSession(m._kses)
-                return v
-            else:
-                raise LoginRequiredError()
+        m: Mirai = l[0]
+        if m._logined:
+            db: MiraiDatabase = m._db
+            v = f(*l, **k)
+            if v is not None:
+                if v['code'] > 0 and v['code'] <= 4:
+                    db.removeSession(m._kses.sessionId)
+                    m._logined = False
+                    m.login()
+                    return o(*l, **k)
+            m._kses.lastedUsedTime = m._lastRequestTime
+            db.setSession(m._kses)
+            return v
+        else:
+            raise LoginRequiredError()
     return o
 
 
