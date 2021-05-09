@@ -20,6 +20,11 @@ from json import dumps
 from time import time_ns
 from miraiDatabase import MiraiSession, MiraiDatabase
 from functools import wraps
+from typing import Tuple, Union
+
+
+IMG_TYPE = Tuple[str, bytes]
+FILE_TYPE = Tuple[str, Union[str, bytes]]
 
 
 class LoginRequiredError(Exception):
@@ -35,7 +40,7 @@ def login_required(f):
             if m._logined:
                 db: MiraiDatabase = m._db
                 v = f(*l, **k)
-                if v is not None and isinstance(v, dict):
+                if v is not None and isinstance(v, dict) and 'code' in v:
                     if v['code'] > 0 and v['code'] <= 4:
                         db.removeSession(m._kses.sessionId)
                         m._logined = False
@@ -150,6 +155,13 @@ class Mirai:
         except:
             return None
 
+    def _recall(self, sessionKey: str, messageId: int):
+        r = self._post("/recall",
+                       {"sessionKey": sessionKey, "target": messageId})
+        if r is None:
+            return None
+        return r.json()
+
     def _release(self, sessionKey: str, qq: int):
         r = self._post("/release", {"sessionKey": sessionKey, "qq": qq})
         if r is None:
@@ -160,6 +172,39 @@ class Mirai:
         r = self._post("/sendFriendMessage",
                        {"sessionKey": sessionKey, "target": qq,
                         "messageChain": message})
+        if r is None:
+            return None
+        return r.json()
+
+    def _sendGroupMessage(self, sessionKey: str, group: int, message: list):
+        r = self._post("/sendGroupMessage",
+                       {"sessionKey": sessionKey, "target": group,
+                        "messageChain": message})
+        if r is None:
+            return None
+        return r.json()
+
+    def _sendTempMessage(self, sessionKey: str, qq: int, group: int,
+                         message: list):
+        r = self._post("/sendTempMessage",
+                       {"sessionKey": sessionKey, "qq": qq, "group": group,
+                        "messageChain": message})
+        if r is None:
+            return None
+        return r.json()
+
+    def _uploadGroupFileAndSend(self, sessionKey: str, groupId: int, path: str,
+                                file: FILE_TYPE):
+        r = self._post("/uploadFileAndSend",
+                       {"sessionKey": sessionKey, "type": "Group", "target": groupId,
+                        "path": path}, {"file": file})
+        if r is None:
+            return None
+        return r.json()
+
+    def _uploadImage(self, sessionKey: str, type: str, img: IMG_TYPE):
+        r = self._post("/uploadImage",
+                       {"sessionKey": sessionKey, "type": type}, {"img": img})
         if r is None:
             return None
         return r.json()
@@ -251,6 +296,13 @@ class Mirai:
         "获取bot接收到的最老消息和最老各类事件(不会从MiraiApiHttp消息记录中删除)"
         return self._peekMessage(self._kses.sessionId, count)
 
+    @login_required
+    def recall(self, messageId: int):
+        """撤回指定消息。
+        对于bot发送的消息，有2分钟时间限制。
+        对于撤回群聊中群员的消息，需要有相应权限"""
+        return self._recall(self._kses.sessionId, messageId)
+
     def release(self):
         if self._logined:
             r = self._release(self._kses.sessionId,
@@ -260,6 +312,38 @@ class Mirai:
             self._logined = False
             self._db.removeSession(self._kses.sessionId)
 
+    @login_required
     def sendFriendMessage(self, qq: int, message: list):
         "向指定好友发送消息"
         return self._sendFriendMessage(self._kses.sessionId, qq, message)
+
+    @login_required
+    def sendGroupMessage(self, group: int, message: list):
+        "向指定群发送消息"
+        return self._sendGroupMessage(self._kses.sessionId, group, message)
+
+    @login_required
+    def sendTempMessage(self, qq: int, group: int, message: list):
+        "向临时会话对象发送消息"
+        return self._sendTempMessage(self._kses.sessionId, qq, group, message)
+
+    @login_required
+    def uploadFriendImage(self, img: IMG_TYPE):
+        "上传图片文件至服务器并返回ImageId（好友图片）"
+        return self._uploadImage(self._kses.sessionId, "friend", img)
+
+    @login_required
+    def uploadGroupFileAndSend(self, groupId: int, path: str, file: FILE_TYPE):
+        "上传文件至群并返回FileId（测试需要管理员权限）"
+        return self._uploadGroupFileAndSend(self._kses.sessionId, groupId,
+                                            path, file)
+
+    @login_required
+    def uploadGroupImage(self, img: IMG_TYPE):
+        "上传图片文件至服务器并返回ImageId（群图片）"
+        return self._uploadImage(self._kses.sessionId, "group", img)
+
+    @login_required
+    def uploadTempImage(self, img: IMG_TYPE):
+        "上传图片文件至服务器并返回ImageId（临时图片）"
+        return self._uploadImage(self._kses.sessionId, "temp", img)
