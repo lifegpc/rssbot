@@ -38,6 +38,7 @@ from dictdeal import json2data
 from rssbotlib import loadRSSBotLib, AddVideoInfoResult
 from time import sleep
 from miraiDatabase import MiraiDatabase
+from mirai import Mirai
 
 
 MAX_ITEM_IN_MEDIA_GROUP = 10
@@ -587,7 +588,11 @@ class main:
             if self._setting.miraiApiHTTPAuthKey is None:
                 print('未设置AuthKey。')
                 return -1
+            if self._setting.miraiApiQQ is None:
+                print('未设置QQ号。')
+                return -1
             self._mriaidb = MiraiDatabase(self, self._setting.databaseLocation)
+            self._mriai = Mirai(self)
         self._r = Session()
         if self._telegramBotApiServer != 'https://api.telegram.org':
             self._request("logOut", "post",

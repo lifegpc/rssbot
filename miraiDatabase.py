@@ -37,16 +37,61 @@ class MiraiSessionStatus(Enum):
 
 
 class MiraiSession:
-    def __init__(self, sessionId: str, qq: int, status: Union[MiraiSessionStatus, int], lastedUsedTime: int):
+    def __init__(self, sessionId: str, qq: int = None, status: Union[MiraiSessionStatus, int] = None, lastedUsedTime: int = None):
         self._sessionId = sessionId
         self._qq = qq
-        if isinstance(status, MiraiSessionStatus):
+        if status is None:
+            self._status = MiraiSessionStatus(0)
+        elif isinstance(status, MiraiSessionStatus):
             self._status = status
-        elif isinstance(status, int):
+        elif isinstance(status, int) and status >= 0 and status <= 2:
             self._status = MiraiSessionStatus(status)
         else:
             self._status = MiraiSessionStatus(0)
         self._lastedUsedTime = lastedUsedTime
+
+    @property
+    def sessionId(self) -> str:
+        return self._sessionId
+
+    @property
+    def qq(self) -> int:
+        if self._qq is None:
+            return None
+        if isinstance(self._qq, int):
+            return self._qq
+        else:
+            raise ValueError('qq must be int.')
+
+    @qq.setter
+    def qq(self, v):
+        if isinstance(v, int):
+            self._qq = v
+
+    @property
+    def status(self) -> MiraiSessionStatus:
+        return self._status
+
+    @status.setter
+    def status(self, v):
+        if isinstance(v, MiraiSessionStatus):
+            self._status = v
+        elif isinstance(v, int) and v >= 0 and v <= 2:
+            self._status = MiraiSessionStatus(v)
+
+    @property
+    def lastedUsedTime(self) -> int:
+        if self._lastedUsedTime is None:
+            return None
+        if isinstance(self._lastedUsedTime, int):
+            return self._lastedUsedTime
+        else:
+            raise ValueError('lastedUsedTime must be int.')
+
+    @lastedUsedTime.setter
+    def lastedUsedTime(self, v):
+        if isinstance(v, int):
+            self._lastedUsedTime = v
 
 
 class MiraiDatabase:
@@ -110,6 +155,19 @@ class MiraiDatabase:
             return False
         return None
 
+    def getVerifedSession(self) -> MiraiSession:
+        self.removeUselessSession()
+        cur = self._db.execute('SELECT * FROM mirai_session WHERE status=1;')
+        for i in cur:
+            return MiraiSession(*i)
+        return None
+
+    def removeSession(self, sessionId: str):
+        if self.getSession(sessionId, True):
+            self._db.execute(
+                'DELETE FROM mirai_session WHERE sessionId=?;', (sessionId,))
+            self._db.commit()
+
     def removeUselessSession(self):
         with self._lock:
             try:
@@ -120,3 +178,13 @@ class MiraiDatabase:
                 return True
             except:
                 return False
+
+    def setSession(self, ses: MiraiSession):
+        if self.getSession(ses.sessionId, True):
+            self._db.execute(
+                'UPDATE mirai_session SET qq=?, status=?, lastedUsedTime=? WHERE sessionId=?;',
+                (ses.qq, ses.status.value, ses.lastedUsedTime, ses.sessionId))
+        else:
+            self._db.execute('INSERT INTO mirai_session VALUES (?, ?, ?, ?);',
+            (ses.sessionId, ses.qq, ses.status.value, ses.lastedUsedTime))
+        self._db.commit()

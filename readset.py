@@ -56,6 +56,7 @@ class settings:
             self._main, d['botOwnerList']) if 'botOwnerList' in d and d['botOwnerList'] != '' else BotOwnerList(self._main)
         self._miraiApiHTTPServer = d['miraiApiHTTPServer'] if 'miraiApiHTTPServer' in d and d['miraiApiHTTPServer'] != '' else None
         self._miraiApiHTTPAuthKey = d['miraiApiHTTPAuthKey'] if 'miraiApiHTTPAuthKey' in d and d['miraiApiHTTPAuthKey'] != '' else None
+        self._miraiApiQQ = int(d['miraiApiQQ']) if 'miraiApiQQ' in d and d['miraiApiQQ'].isnumeric() else None
 
     @property
     def token(self) -> str:
@@ -112,6 +113,10 @@ class settings:
     @property
     def miraiApiHTTPAuthKey(self) -> str:
         return self._miraiApiHTTPAuthKey
+
+    @property
+    def miraiApiQQ(self) -> int:
+        return self._miraiApiQQ
 
 
 class commandline:
