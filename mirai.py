@@ -35,7 +35,7 @@ def login_required(f):
             if m._logined:
                 db: MiraiDatabase = m._db
                 v = f(*l, **k)
-                if v is not None:
+                if v is not None and isinstance(v, dict):
                     if v['code'] > 0 and v['code'] <= 4:
                         db.removeSession(m._kses.sessionId)
                         m._logined = False
@@ -55,6 +55,7 @@ class Mirai:
         self._m: main = m
         self._db = self._m._mriaidb
         self._ses = Session()
+        self._ses.headers.update({"Accept-Encoding": "gzip, deflate, br"})
         self._lastRequestTime = 0
         self._logined = False
         self.login()
@@ -85,6 +86,12 @@ class Mirai:
             return None
         return r.json()
 
+    def _friendList(self, sessionKey: str):
+        r = self._get("/friendList", {"sessionKey": sessionKey})
+        if r is None:
+            return None
+        return r.json()
+
     def _get(self, path: str, data: dict = None):
         try:
             url = f"{self._m._setting.miraiApiHTTPServer}{path}"
@@ -96,6 +103,19 @@ class Mirai:
             return r
         except:
             return None
+
+    def _groupList(self, sessionKey: str):
+        r = self._get("/groupList", {"sessionKey": sessionKey})
+        if r is None:
+            return None
+        return r.json()
+
+    def _memberList(self, sessionKey: str, groupId: int):
+        r = self._get("/memberList",
+                      {"sessionKey": sessionKey, "target": groupId})
+        if r is None:
+            return None
+        return r.json()
 
     def _messageFromId(self, sessionKey: str, id: int):
         r = self._get("/messageFromId", {"sessionKey": sessionKey, "id": id})
@@ -121,8 +141,8 @@ class Mirai:
         try:
             url = f"{self._m._setting.miraiApiHTTPServer}{path}"
             if files is None:
-                r = self._ses.post(url, data=dumps(json, ensure_ascii=False,
-                                   separators=(',', ':')))
+                r = self._ses.post(url, data=dumps(
+                    json, ensure_ascii=False, separators=(',', ':')).encode())
             else:
                 r = self._ses.post(url, data=json2data(json), files=files)
             self._lastRequestTime = time_ns()
@@ -132,6 +152,14 @@ class Mirai:
 
     def _release(self, sessionKey: str, qq: int):
         r = self._post("/release", {"sessionKey": sessionKey, "qq": qq})
+        if r is None:
+            return None
+        return r.json()
+
+    def _sendFriendMessage(self, sessionKey: str, qq: int, message: list):
+        r = self._post("/sendFriendMessage",
+                       {"sessionKey": sessionKey, "target": qq,
+                        "messageChain": message})
         if r is None:
             return None
         return r.json()
@@ -162,6 +190,16 @@ class Mirai:
     def fetchMessage(self, count: int = 10):
         "获取bot接收到的最老消息和最老各类事件(会从MiraiApiHttp消息记录中删除)"
         return self._fetchMessage(self._kses.sessionId, count)
+
+    @login_required
+    def friendList(self):
+        "获取bot的好友列表"
+        return self._friendList(self._kses.sessionId)
+
+    @login_required
+    def groupList(self):
+        "获取bot的群列表"
+        return self._groupList(self._kses.sessionId)
 
     def login(self):
         ses = self._db.getVerifedSession()
@@ -194,6 +232,11 @@ class Mirai:
         return True
 
     @login_required
+    def memberList(self, groupId: int):
+        "获取bot指定群中的成员列表"
+        return self._memberList(self._kses.sessionId, groupId)
+
+    @login_required
     def messageFromId(self, id: int):
         "获取bot接收到的消息和各类事件"
         return self._messageFromId(self._kses.sessionId, id)
@@ -216,3 +259,7 @@ class Mirai:
                 return
             self._logined = False
             self._db.removeSession(self._kses.sessionId)
+
+    def sendFriendMessage(self, qq: int, message: list):
+        "向指定好友发送消息"
+        return self._sendFriendMessage(self._kses.sessionId, qq, message)
