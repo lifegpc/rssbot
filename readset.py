@@ -31,7 +31,7 @@ class settings:
         with open(fn, 'r', encoding='utf8') as f:
             t = f.read()
             for i in t.splitlines(False):
-                l = i.split('=', 2)
+                l = i.split('=', 1)
                 if len(l) == 2:
                     d[l[0]] = l[1]
         self._token = d['token'] if 'token' in d else None
