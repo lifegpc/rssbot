@@ -60,9 +60,32 @@ def version_1_11_0_needed(f):
         m: Mirai = l[0]
         if m._version < [1, 11, 0]:
             return None
-        else:
-            return f(*l, **k)
+        return f(*l, **k)
     return o
+
+
+def admin_needed(ind = 1):
+    "ind: 第i+1个参数是groupId"
+    def i(f):
+        @wraps(f)
+        def o(*l, **k):
+            m: Mirai = l[0]
+            groupId = l[ind]
+            r = m.groupList()
+            if r is None or not isinstance(r, list):
+                return None
+            matched = False
+            for n in r:
+                if n['id'] == groupId:
+                    matched = True
+                    if n['permission'] == 'MEMBER':
+                        return None
+                    break
+            if not matched:
+                return None
+            return f(*l, **k)
+        return o
+    return i
 
 
 class Mirai:
@@ -77,6 +100,8 @@ class Mirai:
         self._version = []
         for i in self.about()['data']['version'].split('.'):
             self._version.append(int(i))
+        if self._version < [1, 10, 0]:
+            raise ValueError('mirai-api-http的版本至少为1.10.0')
         self.login()
 
     def _auth(self, authKey: str):
@@ -352,6 +377,7 @@ class Mirai:
 
     @login_required
     @version_1_11_0_needed
+    @admin_needed()
     def uploadGroupFileAndSend(self, groupId: int, path: str, file: FILE_TYPE):
         "上传文件至群并返回FileId（测试需要管理员权限）"
         return self._uploadGroupFileAndSend(self._kses.sessionId, groupId,
