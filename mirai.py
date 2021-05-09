@@ -54,6 +54,17 @@ def login_required(f):
     return o
 
 
+def version_1_11_0_needed(f):
+    @wraps(f)
+    def o(*l, **k):
+        m: Mirai = l[0]
+        if m._version < [1, 11, 0]:
+            return None
+        else:
+            return f(*l, **k)
+    return o
+
+
 class Mirai:
     def __init__(self, m):
         from rssbot import main
@@ -63,6 +74,9 @@ class Mirai:
         self._ses.headers.update({"Accept-Encoding": "gzip, deflate, br"})
         self._lastRequestTime = 0
         self._logined = False
+        self._version = []
+        for i in self.about()['data']['version'].split('.'):
+            self._version.append(int(i))
         self.login()
 
     def _auth(self, authKey: str):
@@ -105,6 +119,8 @@ class Mirai:
                 url += '?' + p
             r = self._ses.get(url)
             self._lastRequestTime = time_ns()
+            if r.status_code >= 400:
+                return None
             return r
         except:
             return None
@@ -151,6 +167,8 @@ class Mirai:
             else:
                 r = self._ses.post(url, data=json2data(json), files=files)
             self._lastRequestTime = time_ns()
+            if r.status_code >= 400:
+                return None
             return r
         except:
             return None
@@ -333,6 +351,7 @@ class Mirai:
         return self._uploadImage(self._kses.sessionId, "friend", img)
 
     @login_required
+    @version_1_11_0_needed
     def uploadGroupFileAndSend(self, groupId: int, path: str, file: FILE_TYPE):
         "上传文件至群并返回FileId（测试需要管理员权限）"
         return self._uploadGroupFileAndSend(self._kses.sessionId, groupId,
