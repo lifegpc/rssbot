@@ -97,6 +97,19 @@ class Mirai:
         except:
             return None
 
+    def _messageFromId(self, sessionKey: str, id: int):
+        r = self._get("/messageFromId", {"sessionKey": sessionKey, "id": id})
+        if r is None:
+            return None
+        return r.json()
+
+    def _peekLatestMessage(self, sessionKey: str, count: int):
+        r = self._get("/peekLatestMessage",
+                      {"sessionKey": sessionKey, "count": count})
+        if r is None:
+            return None
+        return r.json()
+
     def _peekMessage(self, sessionKey: str, count: int):
         r = self._get("/peekMessage",
                       {"sessionKey": sessionKey, "count": count})
@@ -181,6 +194,25 @@ class Mirai:
         return True
 
     @login_required
+    def messageFromId(self, id: int):
+        "获取bot接收到的消息和各类事件"
+        return self._messageFromId(self._kses.sessionId, id)
+
+    @login_required
+    def peekLatestMessage(self, count: int = 10):
+        "获取bot接收到的最新消息和最新各类事件(不会从MiraiApiHttp消息记录中删除)"
+        return self._peekLatestMessage(self._kses.sessionId, count)
+
+    @login_required
     def peekMessage(self, count: int = 10):
         "获取bot接收到的最老消息和最老各类事件(不会从MiraiApiHttp消息记录中删除)"
         return self._peekMessage(self._kses.sessionId, count)
+
+    def release(self):
+        if self._logined:
+            r = self._release(self._kses.sessionId,
+                              self._m._setting.miraiApiQQ)
+            if r is None:
+                return
+            self._logined = False
+            self._db.removeSession(self._kses.sessionId)
