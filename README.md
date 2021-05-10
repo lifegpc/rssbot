@@ -63,9 +63,11 @@ rssbotLib=rssbot.dll
 ### miraiApiHTTPServer
 可选参数。指定[mirai-api-http](https://github.com/project-mirai/mirai-api-http)服务器位置。例如`http://localhost:8081`。可用来发送QQ消息。设置后必须设置[`miraiApiHTTPAuthKey`](#miraiapihttpauthkey)和[`miraiApiQQ`](#miraiapiqq)
 ### miraiApiHTTPAuthKey
-可选参数。指定mirai-api-http的[AuthKey](https://github.com/project-mirai/mirai-api-http#开始使用)。
+可选参数。指定mirai-api-http的`[AuthKey]`(https://github.com/project-mirai/mirai-api-http#开始使用)(2.X版本为`VerifyKey`)。
 ### miraiApiQQ
 可选参数。已在mirai登录的QQ号。
+### miraiApiHTTPVer
+可选参数。指定mirai-api-http的版本，只有当获取版本失败时采用该值。
 ## 命令行参数
 ```text
 --rebuild-hashlist 重建hashList

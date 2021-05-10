@@ -32,6 +32,11 @@ class LoginRequiredError(Exception):
         Exception.__init__(self, 'Login is needed.')
 
 
+class AlreadyDepreated(Exception):
+    def __init__(self, name: str):
+        Exception.__init__(self, f'{name} is already depreated.')
+
+
 def login_required(f):
     @wraps(f)
     def o(*l, **k):
@@ -60,6 +65,20 @@ def version_needed(v: List[int]):
         def o(*l, **k):
             m: Mirai = l[0]
             if m._version < v:
+                return None
+            return f(*l, **k)
+        return o
+    return i
+
+
+def depreated_at(v: List[int], raise_error: bool = True):
+    def i(f):
+        @wraps(f)
+        def o(*l, **k):
+            m: Mirai = l[0]
+            if m._version >= v:
+                if raise_error:
+                    raise AlreadyDepreated(f.__name__)
                 return None
             return f(*l, **k)
         return o
@@ -100,14 +119,23 @@ class Mirai:
         self._lastRequestTime = 0
         self._logined = False
         self._version = []
-        for i in self.about()['data']['version'].split('.'):
+        abt = self.about()
+        if abt is None or 'code' not in abt or abt['code'] != 0:
+            if self._m._setting.miraiApiHTTPVer is None:
+                raise ValueError('Unknown Version.')
+            ver = self._m._setting.miraiApiHTTPVer
+        else:
+            ver = abt['data']['version']
+        for i in ver.split('-')[0].split('.'):
             self._version.append(int(i))
         if self._version < [1, 10, 0]:
             raise ValueError('mirai-api-http的版本至少为1.10.0')
         self.login()
 
     def _auth(self, authKey: str):
-        r = self._post("/auth", {"authKey": authKey})
+        path = "/auth" if self._version < [2, 0] else '/verify'
+        keyname = "authKey" if self._version < [2, 0] else 'verifyKey'
+        r = self._post(path, {keyname: authKey})
         if r is None:
             return None
         return r.json()
@@ -288,7 +316,8 @@ class Mirai:
         return r.json()
 
     def _verify(self, sessionKey: str, qq: int):
-        r = self._post("/verify", {"sessionKey": sessionKey, "qq": qq})
+        path = "/verify" if self._version < [2, 0] else '/bind'
+        r = self._post(path, {"sessionKey": sessionKey, "qq": qq})
         if r is None:
             return None
         return r.json()

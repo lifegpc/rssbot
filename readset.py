@@ -57,6 +57,7 @@ class settings:
         self._miraiApiHTTPServer = d['miraiApiHTTPServer'] if 'miraiApiHTTPServer' in d and d['miraiApiHTTPServer'] != '' else None
         self._miraiApiHTTPAuthKey = d['miraiApiHTTPAuthKey'] if 'miraiApiHTTPAuthKey' in d and d['miraiApiHTTPAuthKey'] != '' else None
         self._miraiApiQQ = int(d['miraiApiQQ']) if 'miraiApiQQ' in d and d['miraiApiQQ'].isnumeric() else None
+        self._miraiApiHTTPVer = d['miraiApiHTTPVer'] if 'miraiApiHTTPVer' in d and d['miraiApiHTTPVer'] != '' else None
 
     @property
     def token(self) -> str:
@@ -117,6 +118,10 @@ class settings:
     @property
     def miraiApiQQ(self) -> int:
         return self._miraiApiQQ
+
+    @property
+    def miraiApiHTTPVer(self) -> str:
+        return self._miraiApiHTTPVer
 
 
 class commandline:
