@@ -20,7 +20,7 @@ from json import dumps
 from time import time_ns
 from miraiDatabase import MiraiSession, MiraiDatabase
 from functools import wraps
-from typing import Tuple, Union
+from typing import Tuple, Union, List
 
 
 IMG_TYPE = Tuple[str, bytes]
@@ -54,14 +54,16 @@ def login_required(f):
     return o
 
 
-def version_1_11_0_needed(f):
-    @wraps(f)
-    def o(*l, **k):
-        m: Mirai = l[0]
-        if m._version < [1, 11, 0]:
-            return None
-        return f(*l, **k)
-    return o
+def version_needed(v: List[int]):
+    def i(f):
+        @wraps(f)
+        def o(*l, **k):
+            m: Mirai = l[0]
+            if m._version < v:
+                return None
+            return f(*l, **k)
+        return o
+    return i
 
 
 def admin_needed(ind=1):
@@ -180,6 +182,13 @@ class Mirai:
             return None
         return r.json()
 
+    def _groupMkdir(self, sessionKey: str, group: int, dir: str):
+        r = self._post("/groupMkdir", {"sessionKey": sessionKey,
+                                       "group": group, "dir": dir})
+        if r is None:
+            return None
+        return r.json()
+
     def _memberList(self, sessionKey: str, groupId: int):
         r = self._get("/memberList",
                       {"sessionKey": sessionKey, "target": groupId})
@@ -216,7 +225,9 @@ class Mirai:
             else:
                 r = self._ses.post(url, data=json2data(json), files=files)
             self._lastRequestTime = time_ns()
-            if r.status_code >= 400:
+            if r.status_code > 400:
+                if len(r.content) != 0:
+                    return r
                 return None
             return r
         except:
@@ -309,19 +320,19 @@ class Mirai:
         return self._friendList(self._kses.sessionId)
 
     @login_required
-    @version_1_11_0_needed
+    @version_needed([1, 11, 0])
     def groupFileInfo(self, group: int, id: str):
         "获取群文件详细信息"
         return self._groupFileInfo(self._kses.sessionId, group, id)
 
     @login_required
-    @version_1_11_0_needed
+    @version_needed([1, 11, 0])
     def groupFileList(self, group: int, dir: str = None):
         "获取群文件列表"
         return self._groupFileList(self._kses.sessionId, group, dir)
 
     @login_required
-    @version_1_11_0_needed
+    @version_needed([1, 11, 0])
     @admin_needed()
     def groupFileRename(self, group: int, id: str, rename: str):
         "重命名群文件/目录"
@@ -331,6 +342,12 @@ class Mirai:
     def groupList(self):
         "获取bot的群列表"
         return self._groupList(self._kses.sessionId)
+
+    @login_required
+    @version_needed([1, 11, 4])
+    def groupMkdir(self, group: int, dir: str):
+        "创建群文件目录"
+        return self._groupMkdir(self._kses.sessionId, group, dir)
 
     def login(self):
         ses = self._db.getVerifedSession()
@@ -419,7 +436,7 @@ class Mirai:
         return self._uploadImage(self._kses.sessionId, "friend", img)
 
     @login_required
-    @version_1_11_0_needed
+    @version_needed([1, 11, 0])
     @admin_needed()
     def uploadGroupFileAndSend(self, groupId: int, path: str, file: FILE_TYPE):
         "上传文件至群并返回FileId（测试需要管理员权限）"
