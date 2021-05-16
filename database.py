@@ -330,7 +330,7 @@ PRIMARY KEY (userId)
                     return False
                 self._db.execute(
                     f"UPDATE RSSList SET forceupdate=? WHERE id=?;",
-                    ('true' if forceupdate else 'false', hashd))
+                    (forceupdate, hashd))
                 self._db.commit()
                 return True
             except:
