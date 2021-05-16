@@ -355,7 +355,7 @@ class RSSParser:
     def parse(self, fn: str):
         try:
             if fn.find('://') > -1:
-                header = {"Accept-Encoding": "gzip, deflate, br"}
+                header = {"Accept-Encoding": "gzip, deflate"}
                 re = requests.get(fn, headers=header)
                 re.encoding = 'utf8'
                 if re.status_code == 200:
