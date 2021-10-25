@@ -53,6 +53,19 @@ hash TEXT,
 time INT,
 PRIMARY KEY (hash)
 )'''
+USERSTATUS_TABLE = '''CREATE TABLE userStatus (
+userId INT,
+status INT,
+hashd TEXT,
+PRIMARY KEY (userId)
+)'''
+USERBLACKLIST_TABLE = '''CREATE TABLE userBlackList (
+userId INT,
+op_uid INT,
+add_time INT,
+reason TEXT,
+PRIMARY KEY (userId)
+)'''
 
 
 @unique
@@ -118,6 +131,9 @@ class database:
                         'INSERT INTO hashList VALUES (?, ?, ?);', tuple(l))
                 self._db.execute('DROP TABLE hashList_old;')
                 self._db.commit()
+            if v < [1, 0, 0, 6]:
+                self._db.execute(USERBLACKLIST_TABLE)
+                self._db.commit()
             self._db.execute('VACUUM;')
             self.__updateExistsTable()
             self.__write_version()
@@ -132,18 +148,15 @@ class database:
         if 'chatList' not in self._exist_tables:
             self._db.execute(CHATLIST_TABLE)
         if 'userStatus' not in self._exist_tables:
-            self._db.execute('''CREATE TABLE userStatus (
-userId INT,
-status INT,
-hashd TEXT,
-PRIMARY KEY (userId)
-)''')
+            self._db.execute(USERSTATUS_TABLE)
         if 'hashList' not in self._exist_tables:
             self._db.execute(HASHLIST_TABLE)
+        if 'userBlackList' not in self._exist_tables:
+            self._db.execute(USERBLACKLIST_TABLE)
         self._db.commit()
 
     def __init__(self, m, loc: str):
-        self._version = [1, 0, 0, 5]
+        self._version = [1, 0, 0, 6]
         self._value_lock = Lock()
         self._db = sqlite3.connect(loc, check_same_thread=False)
         self._db.execute('VACUUM;')
@@ -304,6 +317,15 @@ PRIMARY KEY (userId)
             except:
                 pass
             return userStatus.normalStatus, ''
+
+    def removeChatInChatList(self, chatId: int):
+        with self._value_lock:
+            try:
+                self._db.execute("DELETE FROM chatList WHERE chatId=?;", (chatId,))
+                self._db.commit()
+                return True
+            except:
+                return False
 
     def removeItemInChatList(self, chatId: int, id: int):
         with self._value_lock:

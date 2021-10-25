@@ -39,6 +39,7 @@ from rssbotlib import loadRSSBotLib, AddVideoInfoResult
 from time import sleep
 from miraiDatabase import MiraiDatabase
 from mirai import Mirai
+from blackList import BlackList
 
 
 MAX_ITEM_IN_MEDIA_GROUP = 10
@@ -559,7 +560,6 @@ class main:
         if self._upi is not None:
             d['offset'] = self._upi
         ud = self._request('getUpdates', 'post', json=d)
-        print(ud)
         if ud is not None and 'ok' in ud and ud['ok']:
             for i in ud['result']:
                 for key in ['message', 'edited_message', 'channel_post', 'edited_channel_post']:
@@ -606,6 +606,8 @@ class main:
             print('无法读取机器人信息')
         self._me = self._me['result']
         self._rssbotLib = loadRSSBotLib(self._setting.rssbotLib, self)
+        self._blackList = BlackList(self)
+        self._blackList.checkRSSList()
         self._upi = None
         self._updateThread = updateThread(self)
         self._updateThread.start()
@@ -700,6 +702,17 @@ class messageHandle(Thread):
         if self._chatId is None:
             print('未知的chat id')
             return -1
+        if self._main._blackList.isInBlackList(self._chatId):
+            c = self.__getChatType()
+            if c == 'private':
+                c = '您'
+            elif c in ['supergroup', 'group']:
+                c = '该群组'
+            elif c == 'channel':
+                c = '该频道'
+            di = {'chat_id': self._chatId, 'text': f'{c}已被封禁。'}
+            self._main._request("sendMessage", 'post', json=di)
+            return
         self._botCommand = None
         if 'text' in self._data:
             if 'entities' in self._data:
@@ -709,6 +722,10 @@ class messageHandle(Thread):
             di = {'chat_id': self._chatId}
             if self.__getChatType() in ['supergroup', 'group'] and self._fromUserId is not None:
                 di['reply_to_message_id'] = self._messageId
+            if self._main._blackList.isInBlackList(self._fromUserId):
+                di['text'] = '您已被封禁。'
+                self._main._request("sendMessage", 'post', json=di)
+                return
             self._userStatus, self._hashd = self._main._db.getUserStatus(
                 self._fromUserId)
             if self._userStatus == userStatus.normalStatus:
@@ -948,6 +965,9 @@ class callbackQueryHandle(Thread):
     def run(self):
         self._callbackQueryId = self._data['id']
         self._fromUserId = self._data['from']['id']
+        if self._main._blackList.isInBlackList(self._fromUserId):
+            self.answer('您已被封禁。')
+            return
         l = self._data['data'].split(',')
         if len(l) < 3:
             self.answer('错误的按钮数据。')

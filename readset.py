@@ -58,6 +58,7 @@ class settings:
         self._miraiApiHTTPAuthKey = d['miraiApiHTTPAuthKey'] if 'miraiApiHTTPAuthKey' in d and d['miraiApiHTTPAuthKey'] != '' else None
         self._miraiApiQQ = int(d['miraiApiQQ']) if 'miraiApiQQ' in d and d['miraiApiQQ'].isnumeric() else None
         self._miraiApiHTTPVer = d['miraiApiHTTPVer'] if 'miraiApiHTTPVer' in d and d['miraiApiHTTPVer'] != '' else None
+        self._blackList = d['blackList'] if 'blackList' in d and d['blackList'] != '' else None
 
     @property
     def token(self) -> str:
