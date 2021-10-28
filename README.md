@@ -30,6 +30,7 @@ rssbotLib=rssbot.dll
 - [miraiApiHTTPServer](#miraiapihttpserver)
 - [miraiApiHTTPAuthKey](#miraiapihttpauthkey)
 - [miraiApiQQ](#miraiapiqq)
+- [blackList](#blacklist)
 ### token
 必填参数。Telegram Bot API Token。向[@BotFather](https://t.me/BotFather)请求新建Bot，即可得到。
 ### maxCount
@@ -60,6 +61,8 @@ rssbotLib=rssbot.dll
 可选参数。具有特殊权限的用户ID，这些用户可以使用部分特殊功能。可以使用`,`分隔两个不同的ID。
 特殊权限：
 - 可以强制更新RSS
+- 可以管理被封禁用户
+- 可以封禁/取消封禁用户
 ### miraiApiHTTPServer
 可选参数。指定[mirai-api-http](https://github.com/project-mirai/mirai-api-http)服务器位置。例如`http://localhost:8081`。可用来发送QQ消息。设置后必须设置[`miraiApiHTTPAuthKey`](#miraiapihttpauthkey)和[`miraiApiQQ`](#miraiapiqq)
 ### miraiApiHTTPAuthKey
@@ -68,6 +71,8 @@ rssbotLib=rssbot.dll
 可选参数。已在mirai登录的QQ号。
 ### miraiApiHTTPVer
 可选参数。指定mirai-api-http的版本，只有当获取版本失败时采用该值。
+### blackList
+可选参数。被封禁的用户/chat ID。被封禁的用户/chat无法与bot交互。可以使用`,`分隔两个不同的ID。
 ## 命令行参数
 ```text
 --rebuild-hashlist 重建hashList
