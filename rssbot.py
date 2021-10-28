@@ -1209,73 +1209,19 @@ class callbackQueryHandle(Thread):
                 self._main._request("editMessageText", "post", json=di)
                 self.answer()
                 return
-            elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.DisableWebPagePreview:
-                self._rssMeta.config.disable_web_page_preview = not self._rssMeta.config.disable_web_page_preview
-                di = {'chat_id': self._rssMeta.chatId,
-                      'message_id': self._rssMeta.messageId}
-                di['text'] = getMediaInfo(
-                    self._rssMeta.meta, self._rssMeta.config)
-                di['parse_mode'] = 'HTML'
-                di['disable_web_page_preview'] = True
-                di['reply_markup'] = getInlineKeyBoardWhenRSS2(
-                    self._hashd, self._rssMeta.config)
-                self._main._request("editMessageText", "post", json=di)
-                self.answer()
-                return
-            elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.ShowRSSTitle:
-                self._rssMeta.config.show_RSS_title = not self._rssMeta.config.show_RSS_title
-                di = {'chat_id': self._rssMeta.chatId,
-                      'message_id': self._rssMeta.messageId}
-                di['text'] = getMediaInfo(
-                    self._rssMeta.meta, self._rssMeta.config)
-                di['parse_mode'] = 'HTML'
-                di['disable_web_page_preview'] = True
-                di['reply_markup'] = getInlineKeyBoardWhenRSS2(
-                    self._hashd, self._rssMeta.config)
-                self._main._request("editMessageText", "post", json=di)
-                self.answer()
-                return
-            elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.ShowContentTitle:
-                self._rssMeta.config.show_Content_title = not self._rssMeta.config.show_Content_title
-                di = {'chat_id': self._rssMeta.chatId,
-                      'message_id': self._rssMeta.messageId}
-                di['text'] = getMediaInfo(
-                    self._rssMeta.meta, self._rssMeta.config)
-                di['parse_mode'] = 'HTML'
-                di['disable_web_page_preview'] = True
-                di['reply_markup'] = getInlineKeyBoardWhenRSS2(
-                    self._hashd, self._rssMeta.config)
-                self._main._request("editMessageText", "post", json=di)
-                self.answer()
-                return
-            elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.ShowContent:
-                self._rssMeta.config.show_content = not self._rssMeta.config.show_content
-                di = {'chat_id': self._rssMeta.chatId,
-                      'message_id': self._rssMeta.messageId}
-                di['text'] = getMediaInfo(
-                    self._rssMeta.meta, self._rssMeta.config)
-                di['parse_mode'] = 'HTML'
-                di['disable_web_page_preview'] = True
-                di['reply_markup'] = getInlineKeyBoardWhenRSS2(
-                    self._hashd, self._rssMeta.config)
-                self._main._request("editMessageText", "post", json=di)
-                self.answer()
-                return
-            elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.SendMedia:
-                self._rssMeta.config.send_media = not self._rssMeta.config.send_media
-                di = {'chat_id': self._rssMeta.chatId,
-                      'message_id': self._rssMeta.messageId}
-                di['text'] = getMediaInfo(
-                    self._rssMeta.meta, self._rssMeta.config)
-                di['parse_mode'] = 'HTML'
-                di['disable_web_page_preview'] = True
-                di['reply_markup'] = getInlineKeyBoardWhenRSS2(
-                    self._hashd, self._rssMeta.config)
-                self._main._request("editMessageText", "post", json=di)
-                self.answer()
-                return
-            elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.DisplayEntryLink:
-                self._rssMeta.config.display_entry_link = not self._rssMeta.config.display_entry_link
+            elif self._inlineKeyBoardCommand in [InlineKeyBoardCallBack.DisableWebPagePreview, InlineKeyBoardCallBack.ShowRSSTitle, InlineKeyBoardCallBack.ShowContentTitle, InlineKeyBoardCallBack.ShowContent, InlineKeyBoardCallBack.SendMedia, InlineKeyBoardCallBack.DisplayEntryLink]:
+                if self._inlineKeyBoardCommand == InlineKeyBoardCallBack.DisableWebPagePreview:
+                    self._rssMeta.config.disable_web_page_preview = not self._rssMeta.config.disable_web_page_preview
+                elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.ShowRSSTitle:
+                    self._rssMeta.config.show_RSS_title = not self._rssMeta.config.show_RSS_title
+                elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.ShowContentTitle:
+                    self._rssMeta.config.show_Content_title = not self._rssMeta.config.show_Content_title
+                elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.ShowContent:
+                    self._rssMeta.config.show_content = not self._rssMeta.config.show_content
+                elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.SendMedia:
+                    self._rssMeta.config.send_media = not self._rssMeta.config.send_media
+                elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.DisplayEntryLink:
+                    self._rssMeta.config.display_entry_link = not self._rssMeta.config.display_entry_link
                 di = {'chat_id': self._rssMeta.chatId,
                       'message_id': self._rssMeta.messageId}
                 di['text'] = getMediaInfo(
