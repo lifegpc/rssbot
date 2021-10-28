@@ -41,6 +41,7 @@ class InlineKeyBoardForRSSList(Enum):
     ShowContent = 15
     SendMedia = 16
     ForceUpdate = 17
+    DisplayEntryLink = 18
 
 
 def getTextContentForRSSInList(rssEntry: RSSEntry, s: settings) -> str:
@@ -70,6 +71,7 @@ def getTextContentForRSSInList(rssEntry: RSSEntry, s: settings) -> str:
         text.addtotext(f"显示内容标题：{config.show_Content_title}")
         text.addtotext(f"显示内容：{config.show_content}")
         text.addtotext(f"发送媒体：{config.send_media}")
+        text += f"单独一行显示链接：{config.display_entry_link}"
     return text.tostr()
 
 
@@ -186,6 +188,8 @@ def getInlineKeyBoardForRSSSettingsInList(chatId: int, rssEntry: RSSEntry, index
         temp = '禁用发送媒体' if config.send_media else '启用发送媒体'
         d[i].append(
             {'text': temp, 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.SendMedia.value},{index},{rssEntry.id}'})
+        temp = '禁用单独一行显示链接' if config.display_entry_link else '启用单独一行显示链接'
+        d[i].append({'text': 'temp', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.DisplayEntryLink.value},{index},{rssEntry.id}'})
     d.append([])
     i = i + 1
     d[i].append(

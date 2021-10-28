@@ -69,6 +69,7 @@ def getMediaInfo(m: dict, config: RSSConfig = RSSConfig()) -> str:
     s = f"{s}\n显示内容标题：{config.show_Content_title}"
     s = f"{s}\n显示内容：{config.show_content}"
     s = f"{s}\n发送媒体：{config.send_media}"
+    s = f"{s}\n单独一行显示链接：{config.display_entry_link}"
     return s
 
 
@@ -85,6 +86,7 @@ class InlineKeyBoardCallBack(Enum):
     ShowContentTitle = 8
     ShowContent = 9
     SendMedia = 10
+    DisplayEntryLink = 11
 
 
 def getInlineKeyBoardWhenRSS(hashd: str, m: dict) -> dict:
@@ -138,6 +140,10 @@ def getInlineKeyBoardWhenRSS2(hashd: str, config: RSSConfig) -> str:
     temp = '禁用发送媒体' if config.send_media else '启用发送媒体'
     d[i].append(
         {'text': temp, 'callback_data': f'0,{hashd},{InlineKeyBoardCallBack.SendMedia.value}'})
+    temp = '禁用单独一行显示链接' if config.display_entry_link else '启用单独一行显示链接'
+    d[i].append({'text': temp, 'callback_data': f'0,{hashd},{InlineKeyBoardCallBack.DisplayEntryLink.value}'})
+    d.append([])
+    i += 1
     d[i].append(
         {'text': '返回', 'callback_data': f'0,{hashd},{InlineKeyBoardCallBack.BackToNormalPage.value}'})
     return {'inline_keyboard': d}
@@ -180,8 +186,11 @@ class main:
             text.addtotext(f"<b>{meta['title']}</b>")
         if config.show_Content_title and 'title' in content and content['title'] is not None and content['title'] != '':
             if 'link' in content and content['link'] is not None and content['link'] != '':
-                text.addtotext(
-                    f"""<b><a href="{content['link']}">{content['title']}</a></b>""")
+                if not config.display_entry_link:
+                    text += f"""<b><a href="{content['link']}">{content['title']}</a></b>"""
+                else:
+                    text += f"<b>{content['title']}</b>"
+                    text += f"""<a href="{content['link']}">{escape(content['link'])}</a>"""
             else:
                 text.addtotext(f"<b>{content['title']}</b>")
         elif 'link' in content and content['link'] is not None and content['link'] != '':
@@ -1265,6 +1274,19 @@ class callbackQueryHandle(Thread):
                 self._main._request("editMessageText", "post", json=di)
                 self.answer()
                 return
+            elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.DisplayEntryLink:
+                self._rssMeta.config.display_entry_link = not self._rssMeta.config.display_entry_link
+                di = {'chat_id': self._rssMeta.chatId,
+                      'message_id': self._rssMeta.messageId}
+                di['text'] = getMediaInfo(
+                    self._rssMeta.meta, self._rssMeta.config)
+                di['parse_mode'] = 'HTML'
+                di['disable_web_page_preview'] = True
+                di['reply_markup'] = getInlineKeyBoardWhenRSS2(
+                    self._hashd, self._rssMeta.config)
+                self._main._request("editMessageText", "post", json=di)
+                self.answer()
+                return
         elif self._loc == 1:
             chatId = int(self._inputList[1])
             self._inlineKeyBoardForRSSListCommand = InlineKeyBoardForRSSList(
@@ -1412,7 +1434,7 @@ class callbackQueryHandle(Thread):
                 self._main._request("editMessageText", "post", json=di)
                 self.answer()
                 return
-            elif self._inlineKeyBoardForRSSListCommand in [InlineKeyBoardForRSSList.DisableWebPagePreview, InlineKeyBoardForRSSList.ShowRSSTitle, InlineKeyBoardForRSSList.ShowContentTitle, InlineKeyBoardForRSSList.ShowContent, InlineKeyBoardForRSSList.SendMedia]:
+            elif self._inlineKeyBoardForRSSListCommand in [InlineKeyBoardForRSSList.DisableWebPagePreview, InlineKeyBoardForRSSList.ShowRSSTitle, InlineKeyBoardForRSSList.ShowContentTitle, InlineKeyBoardForRSSList.ShowContent, InlineKeyBoardForRSSList.SendMedia, InlineKeyBoardForRSSList.DisplayEntryLink]:
                 di = {'chat_id': self._data['message']['chat']['id'],
                       'message_id': self._data['message']['message_id']}
                 rssList = self._main._db.getRSSListByChatId(chatId)
@@ -1435,6 +1457,8 @@ class callbackQueryHandle(Thread):
                     config.show_content = not config.show_content
                 elif self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.SendMedia:
                     config.send_media = not config.send_media
+                elif self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.DisplayEntryLink:
+                    config.display_entry_link = not config.display_entry_link
                 updated = self._main._db.updateChatConfig(chatEntry)
                 if updated:
                     self.answer('修改设置成功')
