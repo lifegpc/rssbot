@@ -16,11 +16,11 @@
 import sqlite3
 from config import RSSConfig
 from RSSEntry import RSSEntry, ChatEntry, HashEntry, HashEntries
-from typing import List
+from typing import List, Tuple
 from enum import Enum, unique
 from threading import Lock
-from hashl import sha256WithBase64
 from time import time
+from blackList import BlackInfo, BlackInfoList
 
 
 VERSION_TABLE = '''CREATE TABLE version (
@@ -64,6 +64,7 @@ userId INT,
 op_uid INT,
 add_time INT,
 reason TEXT,
+name TEXT,
 PRIMARY KEY (userId)
 )'''
 
@@ -134,6 +135,9 @@ class database:
             if v < [1, 0, 0, 6]:
                 self._db.execute(USERBLACKLIST_TABLE)
                 self._db.commit()
+            if v < [1, 0, 0, 7]:
+                self._db.execute('ALTER TABLE userBlackList ADD name TEXT;')
+                self._db.commit()
             self._db.execute('VACUUM;')
             self.__updateExistsTable()
             self.__write_version()
@@ -156,7 +160,7 @@ class database:
         self._db.commit()
 
     def __init__(self, m, loc: str):
-        self._version = [1, 0, 0, 6]
+        self._version = [1, 0, 0, 7]
         self._value_lock = Lock()
         self._db = sqlite3.connect(loc, check_same_thread=False)
         self._db.execute('VACUUM;')
@@ -266,6 +270,23 @@ class database:
             except:
                 return False
 
+    def addBlackInfo(self, i: BlackInfo) -> bool:
+        with self._value_lock:
+            try:
+                have_value = False
+                cur = self._db.execute('SELECT * FROM userBlackList WHERE userId=?;', (i.uid,))
+                for i in cur:
+                    have_value = True
+                    break
+                if have_value:
+                    self._db.execute('UPDATE userBlackList SET op_uid=?, add_time=?, reason=?, name=? WHERE userId=?;', (i.op_uid, i.add_time, i.reason, i.title, i.uid))
+                else:
+                    self._db.execute('INSERT INTO userBlackList VALUES (?, ?, ?, ?, ?);', (i.uid, i.op_uid, i.add_time, i.reason, i.title))
+                self._db.commit()
+                return True
+            except Exception:
+                return False
+
     def getAllRSSList(self) -> List[RSSEntry]:
         with self._value_lock:
             cur = self._db.execute(f'SELECT * FROM RSSList;')
@@ -287,6 +308,14 @@ class database:
                     r.append(temp)
             return r
 
+    def getBlackList(self) -> BlackInfoList:
+        with self._value_lock:
+            cur = self._db.execute('SELECT * FROM userBlackList;')
+            li = BlackInfoList()
+            for i in cur:
+                li.append(BlackInfo(i[0], i[1], i[2], i[3], i[4]))
+            return li
+
     def getRSSByIdAndChatId(self, id: int, chatId: int) -> RSSEntry:
         while self._value_lock:
             cur = self._db.execute('SELECT RSSList.title, RSSList.url, RSSList.interval, RSSList.lastupdatetime, RSSList.id, RSSList.lasterrortime, RSSList.forceupdate, RSSList.errorcount, chatList.config FROM chatList INNER JOIN RSSList ON RSSList.id = chatList.id WHERE chatList.chatId = ? AND chatlist.id = ?;', (chatId, id))
@@ -307,7 +336,7 @@ class database:
                 RSSEntries.append(rssEntry)
             return RSSEntries
 
-    def getUserStatus(self, userId: int) -> (userStatus, str):
+    def getUserStatus(self, userId: int) -> Tuple[userStatus, str]:
         with self._value_lock:
             try:
                 cur = self._db.execute(
@@ -325,6 +354,15 @@ class database:
                 self._db.commit()
                 return True
             except:
+                return False
+
+    def removeFromBlackList(self, userId: int):
+        with self._value_lock:
+            try:
+                self._db.execute('DELETE FROM userBlackList WHERE userId=?;', (userId,))
+                self._db.commit()
+                return True
+            except Exception:
                 return False
 
     def removeItemInChatList(self, chatId: int, id: int):

@@ -36,10 +36,10 @@ import sys
 from fileEntry import FileEntries, remove
 from dictdeal import json2data
 from rssbotlib import loadRSSBotLib, AddVideoInfoResult
-from time import sleep
+from time import sleep, time
 from miraiDatabase import MiraiDatabase
 from mirai import Mirai
-from blackList import BlackList
+from blackList import BlackList, InlineKeyBoardForBlackList, getInlineKeyBoardForBlackList, getTextContentForBlackInfo, getInlineKeyBoardForBlackInfo, getTextContentForUnbanBlackInfo, getInlineKeyBoardForUnbanBlackInfo, BlackInfo
 
 
 MAX_ITEM_IN_MEDIA_GROUP = 10
@@ -702,7 +702,8 @@ class messageHandle(Thread):
         if self._chatId is None:
             print('未知的chat id')
             return -1
-        if self._main._blackList.isInBlackList(self._chatId):
+        self._fromUserId = self.__getFromUserId()
+        if self._main._blackList.isInBlackList(self._chatId) and not self._main._setting.botOwnerList.isOwner(self._fromUserId):
             c = self.__getChatType()
             if c == 'private':
                 c = '您'
@@ -717,7 +718,6 @@ class messageHandle(Thread):
         if 'text' in self._data:
             if 'entities' in self._data:
                 self._botCommand = self.__getBotCommand()
-        self._fromUserId = self.__getFromUserId()
         if self._fromUserId is not None:
             di = {'chat_id': self._chatId}
             if self.__getChatType() in ['supergroup', 'group'] and self._fromUserId is not None:
@@ -852,7 +852,7 @@ class messageHandle(Thread):
                     return
         if self._botCommand is None and self._data['chat']['type'] in ['group', 'supergroup']:
             return
-        if self._botCommand is None or self._botCommand not in ['/help', '/rss', '/rsslist']:
+        if self._botCommand is None or self._botCommand not in ['/help', '/rss', '/rsslist', '/ban', '/banlist', '/unban']:
             self._botCommand = '/help'
         di = {'chat_id': self._chatId}
         if self.__getChatType() in ['supergroup', 'group'] and self._fromUserId is not None:
@@ -860,7 +860,10 @@ class messageHandle(Thread):
         if self._botCommand == '/help':
             di['text'] = '''/help   显示帮助
 /rss url    订阅RSS
-/rsslist [chatId]   获取RSS订阅列表'''
+/rsslist [chatId]   获取RSS订阅列表
+/ban        封禁某用户
+/banlist    查询被封禁列表
+/unban      取消封禁某用户'''
         elif self._botCommand == '/rss':
             self._botCommandPara = self._getCommandlinePara()
             self._uri = None
@@ -893,6 +896,94 @@ class messageHandle(Thread):
             else:
                 di['text'] = '正在确认操作者权限……'
                 self._needCheckUser = True
+        elif self._botCommand == '/banlist':
+            if self._fromUserId is None or not self._main._setting.botOwnerList.isOwner(self._fromUserId):
+                di['text'] = '❌你没有权限操作，请与Bot主人进行PY交易以获得权限。'
+            else:
+                di['text'] = '列表如下：'
+                di['reply_markup'] = getInlineKeyBoardForBlackList(self._main._blackList.getBlackList())
+        elif self._botCommand in ['/ban', '/unban']:
+            isban = self._botCommand == '/ban'
+            words = '封禁' if isban else '取消封禁'
+            if self._fromUserId is None or not self._main._setting.botOwnerList.isOwner(self._fromUserId):
+                di['text'] = '❌你没有权限操作，请与Bot主人进行PY交易以获得权限。'
+            else:
+                ban_uid: int = None
+                title: str = None
+                if 'reply_to_message' in self._data and self._data['reply_to_message'] is not None:
+                    try:
+                        ban_uid = self._data['reply_to_message']['from']['id']
+                        if self._data['reply_to_message']['from']['is_bot']:
+                            di['text'] = f'尝试{words}Bot，你的请求被滥权了。'
+                            self._main._request('sendMessage', 'post', json=di)
+                            return
+                        title = self._data['reply_to_message']['from']['first_name']
+                        if self._data['reply_to_message']['from']['last_name'] is not None:
+                            title += f" {self._data['reply_to_message']['from']['last_name']}"
+                        if self._data['reply_to_message']['from']['username'] is not None:
+                            title += f" ({self._data['reply_to_message']['from']['username']})"
+                    except Exception:
+                        pass
+                self._botCommandPara = self._getCommandlinePara()
+                first_uid = False
+                if ban_uid is None:
+                    first_uid = True
+                    if self._botCommandPara[0] in ['chat', 'channel', 'group']:
+                        try:
+                            ban_uid = self._data['chat']['id']
+                            title = self._data['chat']['title']
+                        except Exception:
+                            pass
+                    else:
+                        try:
+                            ban_uid = int(self._botCommandPara[0])
+                        except Exception:
+                            pass
+                if ban_uid is None:
+                    di['text'] = f'未找到要{words}的用户。'
+                elif self._main._setting.botOwnerList.isOwner(ban_uid):
+                    di['text'] = f'尝试{words}Bot主人，你的请求被滥权了。'
+                else:
+                    bl = self._main._blackList.getBlackList()
+                    ind = bl.find(ban_uid)
+                    if ind > -1:
+                        if isban:
+                            di['text'] = '该用户已被封禁。'
+                            self._main._request('sendMessage', 'post', json=di)
+                            return
+                        if bl[ind].from_config:
+                            di['text'] = '无法取消封禁来自配置文件的用户，请修改配置文件后重启bot。'
+                            self._main._request('sendMessage', 'post', json=di)
+                            return
+                        re = self._main._blackList.unban(bl[ind].uid)
+                        if title is None or title == '':
+                            title = str(ban_uid)
+                        link = '' if ban_uid < 0 else f'tg://user?id={ban_uid}'
+                        if re:
+                            di['text'] = f'取消封禁<a href="{link}">{title}</a>成功！'
+                        else:
+                            di['text'] = f'取消封禁<a href="{link}">{title}</a>失败！'
+                        di['parse_mode'] = 'HTML'
+                    else:
+                        if not isban:
+                            di['text'] = '该用户未被封禁'
+                            self._main._request('sendMessage', 'post', json=di)
+                            return
+                        reason = ''
+                        if first_uid and len(self._botCommandPara) > 1:
+                            reason = self._botCommandPara[1]
+                        elif not first_uid and len(self._botCommandPara) > 0:
+                            reason = self._botCommandPara[0]
+                        info = BlackInfo(ban_uid, self._fromUserId, int(time()), reason, title)
+                        re = self._main._blackList.ban(info)
+                        if title is None or title == '':
+                            title = str(ban_uid)
+                        link = '' if ban_uid < 0 else f'tg://user?id={ban_uid}'
+                        if re:
+                            di['text'] = f'封禁<a href="{link}">{title}</a>成功！封禁理由：{reason}'
+                        else:
+                            di['text'] = f'封禁<a href="{link}">{title}</a>失败！'
+                        di['parse_mode'] = 'HTML'
         re = self._main._request('sendMessage', 'post', json=di)
         if self._botCommand == '/rss' and self._uri is not None and re is not None and 'ok' in re and re['ok']:
             re = re['result']
@@ -969,13 +1060,13 @@ class callbackQueryHandle(Thread):
             self.answer('您已被封禁。')
             return
         l = self._data['data'].split(',')
-        if len(l) < 3:
-            self.answer('错误的按钮数据。')
-            return
         self._inputList = l
         try:
             self._loc = int(l[0])
             if self._loc == 0:
+                if len(l) < 3:
+                    self.answer('错误的按钮数据。')
+                    return
                 self._hashd = l[1]
                 self._command = int(l[2])
         except:
@@ -1383,6 +1474,96 @@ class callbackQueryHandle(Thread):
                 di['parse_mode'] = 'HTML'
                 di['reply_markup'] = getInlineKeyBoardForRSSInList(
                     chatId, rss, ind, self._main._setting.botOwnerList.isOwner(self._fromUserId))
+                self._main._request("editMessageText", "post", json=di)
+                return
+        elif self._loc == 2:
+            if 'message' not in self._data:
+                self.answer('找不到信息。')
+                return
+            if self._fromUserId is None or not self._main._setting.botOwnerList.isOwner(self._fromUserId):
+                self.answer('❌你没有权限操作，请与Bot主人进行PY交易以获得权限。')
+                return
+            try:
+                self._inlineKeyBoardForBlackListCommand = InlineKeyBoardForBlackList(int(self._inputList[1]))
+            except Exception:
+                self.answer('未知的按钮。')
+                return
+            di = {'chat_id': self._data['message']['chat']['id'],
+                  'message_id': self._data['message']['message_id']}
+            if self._inlineKeyBoardForBlackListCommand == InlineKeyBoardForBlackList.FirstPage:
+                di['text'] = '列表如下：'
+                di['reply_markup'] = getInlineKeyBoardForBlackList(self._main._blackList.getBlackList())
+                self._main._request("editMessageText", "post", json=di)
+                return
+            elif self._inlineKeyBoardForBlackListCommand == InlineKeyBoardForBlackList.LastPage:
+                di['text'] = '列表如下：'
+                di['reply_markup'] = getInlineKeyBoardForBlackList(self._main._blackList.getBlackList(), lastPage=True)
+                self._main._request("editMessageText", "post", json=di)
+                return
+            elif self._inlineKeyBoardForBlackListCommand == InlineKeyBoardForBlackList.PrevPage:
+                di['text'] = '列表如下：'
+                di['reply_markup'] = getInlineKeyBoardForBlackList(self._main._blackList.getBlackList(), int(self._inputList[2]) - 1)
+                self._main._request("editMessageText", "post", json=di)
+                return
+            elif self._inlineKeyBoardForBlackListCommand == InlineKeyBoardForBlackList.NextPage:
+                di['text'] = '列表如下：'
+                di['reply_markup'] = getInlineKeyBoardForBlackList(self._main._blackList.getBlackList(), int(self._inputList[2]) + 1)
+                self._main._request("editMessageText", "post", json=di)
+                return
+            elif self._inlineKeyBoardForBlackListCommand == InlineKeyBoardForBlackList.Close:
+                self._main._request("deleteMessage", "post", json=di)
+                return
+            elif self._inlineKeyBoardForBlackListCommand in [InlineKeyBoardForBlackList.BlackInfo, InlineKeyBoardForBlackList.CancleUnban]:
+                bl = self._main._blackList.getBlackList()
+                ind = bl.find(int(self._inputList[3]))
+                if ind == -1:
+                    self.answer('在黑名单里找不到该用户。')
+                    di['text'] = '列表如下：'
+                    di['reply_markup'] = getInlineKeyBoardForBlackList(bl, itemIndex=int(self._inputList[2]))
+                    self._main._request("editMessageText", "post", json=di)
+                    return
+                else:
+                    di['text'] = getTextContentForBlackInfo(bl[ind])
+                    di['parse_mode'] = 'HTML'
+                    di['reply_markup'] = getInlineKeyBoardForBlackInfo(bl[ind], ind)
+                    self._main._request("editMessageText", "post", json=di)
+                    return
+            elif self._inlineKeyBoardForBlackListCommand == InlineKeyBoardForBlackList.BackToList:
+                di['text'] = '列表如下：'
+                di['reply_markup'] = getInlineKeyBoardForBlackList(self._main._blackList.getBlackList(), itemIndex=int(self._inputList[2]))
+                self._main._request("editMessageText", "post", json=di)
+                return
+            elif self._inlineKeyBoardForBlackListCommand == InlineKeyBoardForBlackList.Unban:
+                bl = self._main._blackList.getBlackList()
+                ind = bl.find(int(self._inputList[3]))
+                if ind == -1:
+                    self.answer('在黑名单里找不到该用户。')
+                    di['text'] = '列表如下：'
+                    di['reply_markup'] = getInlineKeyBoardForBlackList(bl, itemIndex=int(self._inputList[2]))
+                    self._main._request("editMessageText", "post", json=di)
+                    return
+                else:
+                    if bl[ind].from_config:
+                        self.answer('无法取消封禁来自配置文件的用户，请修改配置文件后重启bot。')
+                        return
+                    di['text'] = getTextContentForUnbanBlackInfo(bl[ind])
+                    di['parse_mode'] = 'HTML'
+                    di['reply_markup'] = getInlineKeyBoardForUnbanBlackInfo(bl[ind], ind)
+                    self._main._request("editMessageText", "post", json=di)
+                    return
+            elif self._inlineKeyBoardForBlackListCommand == InlineKeyBoardForBlackList.ConfirmUnban:
+                bl = self._main._blackList.getBlackList()
+                ind = bl.find(int(self._inputList[3]))
+                if ind == -1:
+                    self.answer('在黑名单里找不到该用户。')
+                else:
+                    if bl[ind].from_config:
+                        self.answer('无法取消封禁来自配置文件的用户，请修改配置文件后重启bot。')
+                        return
+                    re = self._main._blackList.unban(bl[ind].uid)
+                    self.answer('取消封禁' + ('成功！' if re else '失败！'))
+                di['text'] = '列表如下：'
+                di['reply_markup'] = getInlineKeyBoardForBlackList(self._main._blackList.getBlackList(), itemIndex=int(self._inputList[2]))
                 self._main._request("editMessageText", "post", json=di)
                 return
         else:

@@ -162,6 +162,10 @@ class textc:
         p.close()
         return len(p.s)
 
+    def __iadd__(self, i):
+        self.addtotext(i)
+        return self
+
     def __init__(self):
         self.__str = ''
         self.__max = 4096
