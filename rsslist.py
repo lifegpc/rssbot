@@ -189,7 +189,7 @@ def getInlineKeyBoardForRSSSettingsInList(chatId: int, rssEntry: RSSEntry, index
         d[i].append(
             {'text': temp, 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.SendMedia.value},{index},{rssEntry.id}'})
         temp = '禁用单独一行显示链接' if config.display_entry_link else '启用单独一行显示链接'
-        d[i].append({'text': 'temp', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.DisplayEntryLink.value},{index},{rssEntry.id}'})
+        d[i].append({'text': temp, 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.DisplayEntryLink.value},{index},{rssEntry.id}'})
     d.append([])
     i = i + 1
     d[i].append(
