@@ -48,7 +48,6 @@ class settings:
             d['downloadMediaFile'])) if 'downloadMediaFile' in d and d['downloadMediaFile'].isnumeric() else False
         self._sendFileURLScheme = bool(int(
             d['sendFileURLScheme'])) if 'sendFileURLScheme' in d and d['sendFileURLScheme'].isnumeric() else False
-        self._rssbotLib = d['rssbotLib'] if 'rssbotLib' in d and d['rssbotLib'] != '' else None
         self._databaseLocation = d['databaseLocation'] if 'databaseLocation' in d and d['databaseLocation'] != '' else 'data.db'
         self._retryTTL = RetryTTLList(
             d['retryTTL']) if 'retryTTL' in d and d['retryTTL'] != '' else RetryTTLList()
@@ -91,10 +90,6 @@ class settings:
     @property
     def sendFileURLScheme(self) -> bool:
         return self._sendFileURLScheme
-
-    @property
-    def rssbotLib(self) -> str:
-        return self._rssbotLib
 
     @property
     def databaseLocation(self) -> str:

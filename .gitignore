@@ -8,3 +8,5 @@ Temp/
 *.so
 *.so.*
 *.xml
+*.pyd
+*.pyi

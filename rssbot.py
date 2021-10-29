@@ -614,7 +614,7 @@ class main:
         if self._me is None or 'ok' not in self._me or not self._me['ok']:
             print('无法读取机器人信息')
         self._me = self._me['result']
-        self._rssbotLib = loadRSSBotLib(self._setting.rssbotLib, self)
+        self._rssbotLib = loadRSSBotLib(self)
         self._blackList = BlackList(self)
         self._blackList.checkRSSList()
         self._upi = None

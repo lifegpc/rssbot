@@ -49,7 +49,8 @@ rssbotLib=rssbot.dll
 ### sendFileURLScheme
 可选参数。是否使用本地文件（`file:///`）协议发送媒体。需要确保启用`downloadMediaFile`并且使用的是本地的Telegram Bot API Server（`telegramBotApiServer`）。默认值为否(`0`)。
 ### rssbotLib
-可选参数。[RSSBotLib](https://github.com/lifegpc/rssbotlib)的共享库位置。设置并且成功加载共享库后，默认启用以下功能：
+已弃用。
+新版本的[RSSBotLib](https://github.com/lifegpc/ffmpeg-study/tree/master/rssbotlib)采用Python Extension Module模式，将动态库放置于Module Path内即可加载。加载后默认启用以下功能：
 - 发送视频时附带时长，视频分辨率大小信息（在视频文件大于10MB时非常有用）。
 ### databaseLocation
 可选参数。数据库位置。默认值为`data.db`。
