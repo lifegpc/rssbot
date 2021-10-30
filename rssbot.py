@@ -30,7 +30,7 @@ from random import randrange
 from textc import textc, removeEmptyLine, decodeURI
 from re import search, I
 from rsschecker import RSSCheckerThread
-from rsslist import getInlineKeyBoardForRSSList, InlineKeyBoardForRSSList, getInlineKeyBoardForRSSInList, getTextContentForRSSInList, getInlineKeyBoardForRSSUnsubscribeInList, getTextContentForRSSUnsubscribeInList, getInlineKeyBoardForRSSSettingsInList
+from rsslist import getInlineKeyBoardForRSSList, InlineKeyBoardForRSSList, getInlineKeyBoardForRSSInList, getTextContentForRSSInList, getInlineKeyBoardForRSSUnsubscribeInList, getTextContentForRSSUnsubscribeInList, getInlineKeyBoardForRSSSettingsInList, getInlineKeyBoardForRSSGlobalSettingsInList
 from usercheck import checkUserPermissionsInChat, UserPermissionsInChatCheckResult
 import sys
 from fileEntry import FileEntries, remove
@@ -40,6 +40,7 @@ from time import sleep, time
 from miraiDatabase import MiraiDatabase
 from mirai import Mirai
 from blackList import BlackList, InlineKeyBoardForBlackList, getInlineKeyBoardForBlackList, getTextContentForBlackInfo, getInlineKeyBoardForBlackInfo, getTextContentForUnbanBlackInfo, getInlineKeyBoardForUnbanBlackInfo, BlackInfo
+from json import loads
 
 
 MAX_ITEM_IN_MEDIA_GROUP = 10
@@ -72,6 +73,8 @@ def getMediaInfo(m: dict, config: RSSConfig = RSSConfig()) -> str:
     s = f"{s}\n发送媒体：{config.send_media}"
     s = f"{s}\n单独一行显示链接：{config.display_entry_link}"
     s += f"\n发送图片为文件：{config.send_img_as_file}"
+    s += f"\nRSS全局设置："
+    s += f"\n发送时使用原文件名：{config.send_origin_file_name}"
     return s
 
 
@@ -90,9 +93,11 @@ class InlineKeyBoardCallBack(Enum):
     SendMedia = 10
     DisplayEntryLink = 11
     SendImgAsFile = 12
+    GlobalSettingsPage = 13
+    SendOriginFileName = 14
 
 
-def getInlineKeyBoardWhenRSS(hashd: str, m: dict) -> dict:
+def getInlineKeyBoardWhenRSS(hashd: str, m: dict, isOwn: bool) -> dict:
     d = []
     i = 0
     d.append([])
@@ -117,6 +122,10 @@ def getInlineKeyBoardWhenRSS(hashd: str, m: dict) -> dict:
     i = i + 1
     d[i].append(
         {'text': '设置', 'callback_data': f'0,{hashd},{InlineKeyBoardCallBack.SettingsPage.value}'})
+    if isOwn:
+        d.append([])
+        i += 1
+        d[i].append({'text': 'RSS全局设置', 'callback_data': f'0,{hashd},{InlineKeyBoardCallBack.GlobalSettingsPage.value}'})
     return {'inline_keyboard': d}
 
 
@@ -153,6 +162,17 @@ def getInlineKeyBoardWhenRSS2(hashd: str, config: RSSConfig) -> str:
     i += 1
     d[i].append(
         {'text': '返回', 'callback_data': f'0,{hashd},{InlineKeyBoardCallBack.BackToNormalPage.value}'})
+    return {'inline_keyboard': d}
+
+
+def getInlineKeyBoardWhenRSS3(hashd: str, config: RSSConfig):
+    d = [[]]
+    i = 0
+    temp = '禁用发送时使用原文件名' if config.send_origin_file_name else '启用发送时使用原文件名'
+    d[i].append({'text': temp, 'callback_data': f'0,{hashd},{InlineKeyBoardCallBack.SendOriginFileName.value}'})
+    d.append([])
+    i += 1
+    d[i].append({'text': '返回', 'callback_data': f'0,{hashd},{InlineKeyBoardCallBack.BackToNormalPage.value}'})
     return {'inline_keyboard': d}
 
 
@@ -244,7 +264,7 @@ class main:
                             re = self._request('sendPhoto', 'post', json=di)
                         else:
                             fileEntry = self._tempFileEntries.add(
-                                content['imgList'][0])
+                                content['imgList'][0], config)
                             if not fileEntry.ok:
                                 continue
                             should_use_file = False if fileEntry._fileSize < MAX_PHOTO_SIZE and not config.send_img_as_file else True
@@ -301,7 +321,7 @@ class main:
                             di['video'] = content['videoList'][0]['src']
                         else:
                             fileEntry = self._tempFileEntries.add(
-                                content['videoList'][0]['src'])
+                                content['videoList'][0]['src'], config)
                             if not fileEntry.ok:
                                 continue
                             if self._setting.sendFileURLScheme:
@@ -315,7 +335,7 @@ class main:
                                 di['thumb'] = content['videoList'][0]['poster']
                             else:
                                 fileEntry = self._tempFileEntries.add(
-                                    content['videoList'][0]['poster'])
+                                    content['videoList'][0]['poster'], config)
                                 if not fileEntry.ok:
                                     continue
                                 if self._setting.sendFileURLScheme:
@@ -410,7 +430,7 @@ class main:
                 if not self._setting.downloadMediaFile:
                     di2['media'] = i
                 else:
-                    fileEntry = self._tempFileEntries.add(i)
+                    fileEntry = self._tempFileEntries.add(i, config)
                     if not fileEntry.ok:
                         return None
                     should_use_file = False if fileEntry._fileSize < MAX_PHOTO_SIZE and not config.send_img_as_file else True
@@ -450,7 +470,7 @@ class main:
                 if not self._setting.downloadMediaFile:
                     di2['media'] = i['src']
                 else:
-                    fileEntry = self._tempFileEntries.add(i['src'])
+                    fileEntry = self._tempFileEntries.add(i['src'], config)
                     if not fileEntry.ok:
                         return None
                     if self._setting.sendFileURLScheme:
@@ -464,7 +484,7 @@ class main:
                     if not self._setting.downloadMediaFile:
                         di2['thumb'] = i['poster']
                     else:
-                        fileEntry = self._tempFileEntries.add(i['poster'])
+                        fileEntry = self._tempFileEntries.add(i['poster'], config)
                         if not fileEntry.ok:
                             return None
                         if self._setting.sendFileURLScheme:
@@ -749,7 +769,8 @@ class messageHandle(Thread):
             print('未知的chat id')
             return -1
         self._fromUserId = self.__getFromUserId()
-        if self._main._blackList.isInBlackList(self._chatId) and not self._main._setting.botOwnerList.isOwner(self._fromUserId):
+        self._isOwn = self._main._setting.botOwnerList.isOwner(self._fromUserId)
+        if self._main._blackList.isInBlackList(self._chatId) and not self._isOwn:
             c = self.__getChatType()
             if c == 'private':
                 c = '您'
@@ -891,7 +912,7 @@ class messageHandle(Thread):
                         di['parse_mode'] = 'HTML'
                         di['disable_web_page_preview'] = True
                         di['reply_markup'] = getInlineKeyBoardWhenRSS(
-                            self._hashd, metainfo.meta)
+                            self._hashd, metainfo.meta, self._isOwn)
                         self._main._request('editMessageText', 'post', json=di)
                         self._main._db.setUserStatus(
                             self._fromUserId, userStatus.normalStatus)
@@ -1060,9 +1081,13 @@ class messageHandle(Thread):
                 di['parse_mode'] = 'HTML'
                 di['disable_web_page_preview'] = True
                 di['reply_markup'] = getInlineKeyBoardWhenRSS(
-                    self._hash, media)
+                    self._hash, media, self._isOwn)
+                try:
+                    conf = RSSConfig(loads(self._main._db.getRSSSettingsByUrl(self._uri)))
+                except Exception:
+                    conf = None
                 self._main._rssMetaList.addRSSMeta(rssMetaInfo(
-                    re['message_id'], chatId, media, p.itemList, self._hash))
+                    re['message_id'], chatId, media, p.itemList, self._hash, conf))
             self._main._request('editMessageText', 'post', json=di)
         if self._botCommand == '/rsslist' and self._needCheckUser and re is not None and 'ok' in re and re['ok']:
             messageInfo = re['result']
@@ -1118,6 +1143,7 @@ class callbackQueryHandle(Thread):
         except:
             self.answer('错误的按钮数据。')
             return
+        self._isOwn = self._main._setting.botOwnerList.isOwner(self._fromUserId)
         if self._loc == 0:
             if 'message' not in self._data:
                 self.answer('找不到信息。')
@@ -1218,7 +1244,7 @@ class callbackQueryHandle(Thread):
                 di['parse_mode'] = 'HTML'
                 di['disable_web_page_preview'] = True
                 di['reply_markup'] = getInlineKeyBoardWhenRSS(
-                    self._hashd, self._rssMeta.meta)
+                    self._hashd, self._rssMeta.meta, self._isOwn)
                 self._main._request("editMessageText", "post", json=di)
                 self.answer()
                 return
@@ -1242,7 +1268,7 @@ class callbackQueryHandle(Thread):
                 di['parse_mode'] = 'HTML'
                 di['disable_web_page_preview'] = True
                 di['reply_markup'] = getInlineKeyBoardWhenRSS(
-                    self._hashd, self._rssMeta.meta)
+                    self._hashd, self._rssMeta.meta, self._isOwn)
                 self._main._request("editMessageText", "post", json=di)
                 self.answer()
                 return
@@ -1268,6 +1294,34 @@ class callbackQueryHandle(Thread):
                 di['parse_mode'] = 'HTML'
                 di['disable_web_page_preview'] = True
                 di['reply_markup'] = getInlineKeyBoardWhenRSS2(
+                    self._hashd, self._rssMeta.config)
+                self._main._request("editMessageText", "post", json=di)
+                self.answer()
+                return
+            if not self._isOwn:
+                self.answer('❌你没有权限操作，请与Bot主人进行PY交易以获得权限。')
+                return
+            if self._inlineKeyBoardCommand == InlineKeyBoardCallBack.GlobalSettingsPage:
+                di = {'chat_id': self._rssMeta.chatId,
+                      'message_id': self._rssMeta.messageId}
+                di['text'] = getMediaInfo(
+                    self._rssMeta.meta, self._rssMeta.config)
+                di['parse_mode'] = 'HTML'
+                di['disable_web_page_preview'] = True
+                di['reply_markup'] = getInlineKeyBoardWhenRSS3(
+                    self._hashd, self._rssMeta.config)
+                self._main._request("editMessageText", "post", json=di)
+                self.answer()
+                return
+            elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.SendOriginFileName:
+                self._rssMeta.config.send_origin_file_name = not self._rssMeta.config.send_origin_file_name
+                di = {'chat_id': self._rssMeta.chatId,
+                      'message_id': self._rssMeta.messageId}
+                di['text'] = getMediaInfo(
+                    self._rssMeta.meta, self._rssMeta.config)
+                di['parse_mode'] = 'HTML'
+                di['disable_web_page_preview'] = True
+                di['reply_markup'] = getInlineKeyBoardWhenRSS3(
                     self._hashd, self._rssMeta.config)
                 self._main._request("editMessageText", "post", json=di)
                 self.answer()
@@ -1487,11 +1541,60 @@ class callbackQueryHandle(Thread):
                     chatId, rss, ind, self._main._setting.botOwnerList.isOwner(self._fromUserId))
                 self._main._request("editMessageText", "post", json=di)
                 return
+            if not self._isOwn:
+                self.answer('❌你没有权限操作，请与Bot主人进行PY交易以获得权限。')
+                return
+            if self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.GlobalSettingsPage:
+                di = {'chat_id': self._data['message']['chat']['id'],
+                      'message_id': self._data['message']['message_id']}
+                ind = int(self._inputList[3])
+                ind = max(ind, 0)
+                rssId = int(self._inputList[4])
+                rss = self._main._db.getRSSByIdAndChatId(rssId, chatId)
+                if rss is None:
+                    self.answer('找不到该RSS。')
+                    return
+                di['text'] = getTextContentForRSSInList(
+                    rss, self._main._setting)
+                di['parse_mode'] = 'HTML'
+                di['reply_markup'] = getInlineKeyBoardForRSSGlobalSettingsInList(chatId, rss, ind)
+                self._main._request("editMessageText", "post", json=di)
+                self.answer()
+                return
+            elif self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.SendOriginFileName:
+                di = {'chat_id': self._data['message']['chat']['id'],
+                      'message_id': self._data['message']['message_id']}
+                rssList = self._main._db.getRSSListByChatId(chatId)
+                ind = int(self._inputList[3])
+                ind = max(ind, 0)
+                rssId = int(self._inputList[4])
+                rssEntry = self._main._db.getRSSByIdAndChatId(rssId, chatId)
+                if rssEntry is None:
+                    self.answer('找不到该RSS。')
+                    return
+                chatEntry: ChatEntry = rssEntry.chatList[0]
+                config = chatEntry.config
+                config.send_origin_file_name = not config.send_origin_file_name
+                updated = self._main._db.updateRSSSettings(rssEntry.id, config)
+                if updated:
+                    self.answer('修改设置成功')
+                else:
+                    self.answer('修改设置失败')
+                rss = self._main._db.getRSSByIdAndChatId(rssId, chatId)
+                if rss is None:
+                    self.answer('找不到该RSS。')
+                    return
+                di['text'] = getTextContentForRSSInList(
+                    rss, self._main._setting)
+                di['parse_mode'] = 'HTML'
+                di['reply_markup'] = getInlineKeyBoardForRSSGlobalSettingsInList(chatId, rss, ind)
+                self._main._request("editMessageText", "post", json=di)
+                return
         elif self._loc == 2:
             if 'message' not in self._data:
                 self.answer('找不到信息。')
                 return
-            if self._fromUserId is None or not self._main._setting.botOwnerList.isOwner(self._fromUserId):
+            if self._fromUserId is None or not self._isOwn:
                 self.answer('❌你没有权限操作，请与Bot主人进行PY交易以获得权限。')
                 return
             try:

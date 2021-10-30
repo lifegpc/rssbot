@@ -14,13 +14,14 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from urllib.parse import urlsplit, parse_qs
-from os.path import abspath, splitext, getsize, exists, isdir, isfile
+from os.path import abspath, splitext, getsize, exists, isdir, isfile, join, basename
 from time import time_ns
 from random import randint
 from requests import get
 from os import remove as removeFile, mkdir, listdir, removedirs
 from typing import List
 from threading import Lock
+from config import RSSConfig
 
 
 def remove(s: str):
@@ -39,7 +40,7 @@ def remove(s: str):
 
 
 class FileEntry:
-    def __init__(self, url: str, m):
+    def __init__(self, url: str, m, config: RSSConfig):
         if not exists('Temp'):
             mkdir('Temp')
         if not isdir('Temp'):
@@ -47,7 +48,10 @@ class FileEntry:
             mkdir('Temp')
         from rssbot import main
         self._m: main = m
+        self._config = config
         self._url = url
+        self._usetempdir = False
+        self._tempdir: str = None
         ph = urlsplit(url).path
         self._ext = splitext(ph)[1]
         if self._ext == '' and ph.endswith('/RSSProxy'):  # Support my own proxy link
@@ -56,8 +60,24 @@ class FileEntry:
                 self._ext = splitext(urlsplit(qs['t'][0]).path)[1]
         if self._ext == '':
             self._ext = '.temp'
-        self._fn = f"{time_ns()}{randint(0, 9999)}"
+        if self._config.send_origin_file_name:
+            self._usetempdir = True
+            self._tempdir = f"{time_ns()}{randint(0, 9999)}"
+            if ph.endswith('/RSSProxy'):
+                self._fn = basename(splitext(urlsplit(qs['t'][0]).path)[0])
+            if self._fn == '':
+                self._fn = basename(splitext(ph)[0])
+            if self._fn == '':
+                self._usetempdir = False
+                self._fn = self._tempdir
+            else:
+                self._fn = join(self._tempdir, self._fn)
+        else:
+            self._fn = f"{time_ns()}{randint(0, 9999)}"
         self._fullfn = f"{self._fn}{self._ext}"
+        if self._usetempdir:
+            self._tempdir = abspath(join('Temp', self._tempdir))
+            mkdir(self._tempdir)
         self._abspath = abspath(f'Temp/{self._fn}{self._ext}')
         try:
             self._r = get(url, stream=True)
@@ -69,8 +89,13 @@ class FileEntry:
             self.ok = self._r.ok
         except:
             self.ok = False
-        self._fileSize = getsize(self._abspath)
         self._fileExist = True if exists(self._abspath) else False
+        if not self._fileExist:
+            self._fileSize = 0
+            if self._usetempdir:
+                remove(self._tempdir)
+        else:
+            self._fileSize = getsize(self._abspath)
         self._localURI = f"file://{self._abspath}" if self._abspath[0] == '/' else f"file:///{self._abspath}"
         self._f = None
 
@@ -81,6 +106,8 @@ class FileEntry:
             self._f.close()
         try:
             remove(self._abspath)
+            if self._usetempdir:
+                remove(self._tempdir)
             self._fileExist = False
         except:
             pass
@@ -105,10 +132,10 @@ class FileEntries:
         self.__list = []
         self._value_lock = Lock()
 
-    def add(self, url: str) -> FileEntry:
+    def add(self, url: str, config: RSSConfig) -> FileEntry:
         if self.has(url):
             return self.get(url)
-        fileEntry = FileEntry(url, self._m)
+        fileEntry = FileEntry(url, self._m, config)
         if fileEntry.ok and fileEntry._fileExist:
             self.__list.append(fileEntry)
             return fileEntry

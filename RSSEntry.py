@@ -21,7 +21,7 @@ from hashl import sha256WithBase64
 
 
 class ChatEntry:
-    def __init__(self, data=None):
+    def __init__(self, data=None, settings=None):
         self._chatId = data[0] if data is not None and data[0] is not None else None
         self._id = data[1] if data is not None and data[1] is not None else None
         try:
@@ -29,6 +29,11 @@ class ChatEntry:
                 loads(data[2])) if data is not None and data[2] is not None else RSSConfig()
         except:
             self.config = RSSConfig()
+        if settings is not None:
+            try:
+                self.config.update(settings)
+            except Exception:
+                pass
 
     @property
     def chatId(self) -> int:
@@ -176,6 +181,14 @@ class RSSEntry:
         self._errorcount = 0
         if data is not None and data[7] is not None:
             self._errorcount = data[7]
+        self._settings: dict = {}
+        if data is not None and data[8] is not None:
+            try:
+                self._settings = loads(data[8])
+                if not isinstance(self._settings, dict):
+                    self._settings = {}
+            except Exception:
+                self._settings = {}
         self.chatList = []
         self.hashList = HashEntries(maxCount)
 

@@ -43,6 +43,8 @@ class InlineKeyBoardForRSSList(Enum):
     ForceUpdate = 17
     DisplayEntryLink = 18
     SendImgAsFile = 19
+    GlobalSettingsPage = 20
+    SendOriginFileName = 21
 
 
 def getTextContentForRSSInList(rssEntry: RSSEntry, s: settings) -> str:
@@ -74,6 +76,8 @@ def getTextContentForRSSInList(rssEntry: RSSEntry, s: settings) -> str:
         text.addtotext(f"发送媒体：{config.send_media}")
         text += f"单独一行显示链接：{config.display_entry_link}"
         text += f"发送图片为文件：{config.send_img_as_file}"
+        text += f"RSS全局设置："
+        text += f"发送时使用原文件名：{config.send_origin_file_name}"
     return text.tostr()
 
 
@@ -142,6 +146,10 @@ def getInlineKeyBoardForRSSInList(chatId: int, rssEntry: RSSEntry, index: int, i
     i = i + 1
     d[i].append(
         {'text': '设置', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.SettingsPage.value},{index},{rssEntry.id}'})
+    if isOwner:
+        d.append([])
+        i += 1
+        d[i].append({'text': 'RSS全局设置', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.GlobalSettingsPage.value},{index},{rssEntry.id}'})
     d.append([])
     i = i + 1
     d[i].append(
@@ -200,4 +208,22 @@ def getInlineKeyBoardForRSSSettingsInList(chatId: int, rssEntry: RSSEntry, index
     i = i + 1
     d[i].append(
         {'text': '返回', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.BackToContentPage.value},{index},{rssEntry.id}'})
+    return {'inline_keyboard': d}
+
+
+def getInlineKeyBoardForRSSGlobalSettingsInList(chatId: int, rssEntry: RSSEntry, index: int, page: int = 1) -> dict:
+    d = []
+    i = -1
+    if page != 1:
+        page = 1
+    chatInfo: ChatEntry = rssEntry.chatList[0]
+    config = chatInfo.config
+    if page == 1:
+        temp = '禁用发送时使用原文件名' if config.send_origin_file_name else '启用发送时使用原文件名'
+        d.append([])
+        i += 1
+        d[i].append({'text': temp, 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.SendOriginFileName.value},{index},{rssEntry.id}'})
+    d.append([])
+    i += 1
+    d[i].append({'text': '返回', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.BackToContentPage.value},{index},{rssEntry.id}'})
     return {'inline_keyboard': d}

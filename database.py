@@ -16,7 +16,7 @@
 import sqlite3
 from config import RSSConfig
 from RSSEntry import RSSEntry, ChatEntry, HashEntry, HashEntries
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 from enum import Enum, unique
 from threading import Lock
 from time import time
@@ -40,6 +40,7 @@ id INTEGER,
 lasterrortime INT,
 forceupdate BOOLEAN,
 errorcount INT,
+settings TEXT,
 PRIMARY KEY (id)
 );'''
 CHATLIST_TABLE = '''CREATE TABLE chatList (
@@ -138,6 +139,9 @@ class database:
             if v < [1, 0, 0, 7]:
                 self._db.execute('ALTER TABLE userBlackList ADD name TEXT;')
                 self._db.commit()
+            if v < [1, 0, 0, 8]:
+                self._db.execute('ALTER TABLE RSSList ADD settings TEXT;')
+                self._db.commit()
             self._db.execute('VACUUM;')
             self.__updateExistsTable()
             self.__write_version()
@@ -160,7 +164,7 @@ class database:
         self._db.commit()
 
     def __init__(self, m, loc: str):
-        self._version = [1, 0, 0, 7]
+        self._version = [1, 0, 0, 8]
         self._value_lock = Lock()
         self._db = sqlite3.connect(loc, check_same_thread=False)
         self._db.execute('VACUUM;')
@@ -226,12 +230,12 @@ class database:
                     hashd = i[4]
                 if has_data:
                     self._db.execute(
-                        f"UPDATE RSSList SET title=?, interval=? WHERE id=?;",
-                        (title, ttl, hashd))
+                        f"UPDATE RSSList SET title=?, interval=?, settings=? WHERE id=?;",
+                        (title, ttl, config.toGlobalJson(), hashd))
                 else:
                     self._db.execute(
-                        f"INSERT INTO RSSList (title, url, interval, lastupdatetime, lasterrortime, forceupdate, errorcount) VALUES (?, ?, ?, ?, null, false, 0);",
-                        (title, url, ttl, int(time())))
+                        f"INSERT INTO RSSList (title, url, interval, lastupdatetime, lasterrortime, forceupdate, errorcount, settings) VALUES (?, ?, ?, ?, null, false, 0, ?);",
+                        (title, url, ttl, int(time()), config.toGlobalJson()))
                     cur = self._db.execute(
                         'SELECT * FROM RSSList WHERE url=?;', (url,))
                     for i in cur:
@@ -296,7 +300,7 @@ class database:
                 cur2 = self._db.execute(
                     f'SELECT * FROM chatList WHERE id=?;', (temp.id,))
                 for i2 in cur2:
-                    temp2 = ChatEntry(i2)
+                    temp2 = ChatEntry(i2, temp._settings)
                     temp.chatList.append(temp2)
                 cur3 = self._db.execute(
                     f"SELECT * FROM hashList WHERE id=? ORDER BY time;", (temp.id,))
@@ -318,23 +322,32 @@ class database:
 
     def getRSSByIdAndChatId(self, id: int, chatId: int) -> RSSEntry:
         while self._value_lock:
-            cur = self._db.execute('SELECT RSSList.title, RSSList.url, RSSList.interval, RSSList.lastupdatetime, RSSList.id, RSSList.lasterrortime, RSSList.forceupdate, RSSList.errorcount, chatList.config FROM chatList INNER JOIN RSSList ON RSSList.id = chatList.id WHERE chatList.chatId = ? AND chatlist.id = ?;', (chatId, id))
+            cur = self._db.execute('SELECT RSSList.title, RSSList.url, RSSList.interval, RSSList.lastupdatetime, RSSList.id, RSSList.lasterrortime, RSSList.forceupdate, RSSList.errorcount, RSSList.settings, chatList.config FROM chatList INNER JOIN RSSList ON RSSList.id = chatList.id WHERE chatList.chatId = ? AND chatlist.id = ?;', (chatId, id))
             for i in cur:
                 rss = RSSEntry(i, self._main._setting.maxCount)
-                rss.chatList.append(ChatEntry((chatId, i[4], i[8])))
+                rss.chatList.append(ChatEntry((chatId, i[4], i[9]), rss._settings))
                 return rss
             return None
 
     def getRSSListByChatId(self, chatId: int) -> List[RSSEntry]:
         with self._value_lock:
             cur = self._db.execute(
-                f"SELECT RSSList.title, RSSList.url, RSSList.interval, RSSList.lastupdatetime, RSSList.id, RSSList.lasterrortime, RSSList.forceupdate, RSSList.errorcount, chatList.config FROM RSSList, chatList WHERE chatList.chatId = ? AND RSSList.id = chatList.id ORDER BY title;", (chatId,))
+                f"SELECT RSSList.title, RSSList.url, RSSList.interval, RSSList.lastupdatetime, RSSList.id, RSSList.lasterrortime, RSSList.forceupdate, RSSList.errorcount, RSSList.settings, chatList.config FROM RSSList, chatList WHERE chatList.chatId = ? AND RSSList.id = chatList.id ORDER BY title;", (chatId,))
             RSSEntries = []
             for i in cur:
                 rssEntry = RSSEntry(i, self._main._setting.maxCount)
-                rssEntry.chatList.append(ChatEntry((chatId, i[4], i[8])))
+                rssEntry.chatList.append(ChatEntry((chatId, i[4], i[9]), rssEntry._settings))
                 RSSEntries.append(rssEntry)
             return RSSEntries
+
+    def getRSSSettingsByUrl(self, url: str) -> Optional[str]:
+        with self._value_lock:
+            try:
+                cur = self._db.execute('SELECT settings FROM RSSList WHERE url=?;', (url,))
+                for i in cur:
+                    return i[0]
+            except Exception:
+                return None
 
     def getUserStatus(self, userId: int) -> Tuple[userStatus, str]:
         with self._value_lock:
@@ -478,6 +491,24 @@ class database:
                 self._db.commit()
                 return True
             except:
+                return False
+
+    def updateRSSSettings(self, id: int, settings: RSSConfig):
+        with self._value_lock:
+            try:
+                cur = self._db.execute(
+                    f'SELECT * FROM RSSList WHERE id=?;', (id,))
+                has_data = False
+                for i in cur:
+                    rss = RSSEntry(i, self._main._setting.maxCount)
+                    has_data = True
+                    break
+                if not has_data:
+                    return False
+                self._db.execute('UPDATE RSSList SET settings=? WHERE id=?;', (settings.toGlobalJson(), id))
+                self._db.commit()
+                return True
+            except Exception:
                 return False
 
     def updateRSSWithError(self, id: int, lasterrortime: int):
