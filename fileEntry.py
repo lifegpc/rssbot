@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, parse_qs
 from os.path import abspath, splitext, getsize, exists, isdir, isfile
 from time import time_ns
 from random import randint
@@ -39,14 +39,21 @@ def remove(s: str):
 
 
 class FileEntry:
-    def __init__(self, url: str):
+    def __init__(self, url: str, m):
         if not exists('Temp'):
             mkdir('Temp')
         if not isdir('Temp'):
             remove('Temp')
             mkdir('Temp')
+        from rssbot import main
+        self._m: main = m
         self._url = url
-        self._ext = splitext(urlsplit(url).path)[1]
+        ph = urlsplit(url).path
+        self._ext = splitext(ph)[1]
+        if self._ext == '' and ph.endswith('/RSSProxy'):  # Support my own proxy link
+            qs = parse_qs(urlsplit(url).query)
+            if 't' in qs:
+                self._ext = splitext(urlsplit(qs['t'][0]).path)[1]
         if self._ext == '':
             self._ext = '.temp'
         self._fn = f"{time_ns()}{randint(0, 9999)}"
@@ -92,14 +99,16 @@ class FileEntry:
 
 
 class FileEntries:
-    def __init__(self):
+    def __init__(self, m):
+        from rssbot import main
+        self._m: main = m
         self.__list = []
         self._value_lock = Lock()
 
     def add(self, url: str) -> FileEntry:
         if self.has(url):
             return self.get(url)
-        fileEntry = FileEntry(url)
+        fileEntry = FileEntry(url, self._m)
         if fileEntry.ok and fileEntry._fileExist:
             self.__list.append(fileEntry)
             return fileEntry

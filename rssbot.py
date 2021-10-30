@@ -43,6 +43,7 @@ from blackList import BlackList, InlineKeyBoardForBlackList, getInlineKeyBoardFo
 
 
 MAX_ITEM_IN_MEDIA_GROUP = 10
+MAX_PHOTO_SIZE = 10485760
 
 
 def getMediaInfo(m: dict, config: RSSConfig = RSSConfig()) -> str:
@@ -70,6 +71,7 @@ def getMediaInfo(m: dict, config: RSSConfig = RSSConfig()) -> str:
     s = f"{s}\n显示内容：{config.show_content}"
     s = f"{s}\n发送媒体：{config.send_media}"
     s = f"{s}\n单独一行显示链接：{config.display_entry_link}"
+    s += f"\n发送图片为文件：{config.send_img_as_file}"
     return s
 
 
@@ -87,6 +89,7 @@ class InlineKeyBoardCallBack(Enum):
     ShowContent = 9
     SendMedia = 10
     DisplayEntryLink = 11
+    SendImgAsFile = 12
 
 
 def getInlineKeyBoardWhenRSS(hashd: str, m: dict) -> dict:
@@ -142,6 +145,10 @@ def getInlineKeyBoardWhenRSS2(hashd: str, config: RSSConfig) -> str:
         {'text': temp, 'callback_data': f'0,{hashd},{InlineKeyBoardCallBack.SendMedia.value}'})
     temp = '禁用单独一行显示链接' if config.display_entry_link else '启用单独一行显示链接'
     d[i].append({'text': temp, 'callback_data': f'0,{hashd},{InlineKeyBoardCallBack.DisplayEntryLink.value}'})
+    d.append([])
+    i += 1
+    temp = '禁用发送图片为文件' if config.send_img_as_file else '启用发送图片为文件'
+    d[i].append({'text': temp, 'callback_data': f'0,{hashd},{InlineKeyBoardCallBack.SendImgAsFile.value}'})
     d.append([])
     i += 1
     d[i].append(
@@ -240,14 +247,22 @@ class main:
                                 content['imgList'][0])
                             if not fileEntry.ok:
                                 continue
+                            should_use_file = False if fileEntry._fileSize < MAX_PHOTO_SIZE and not config.send_img_as_file else True
                             if self._setting.sendFileURLScheme:
-                                di['photo'] = fileEntry._localURI
-                                re = self._request(
-                                    'sendPhoto', 'post', json=di)
+                                if not should_use_file:
+                                    di['photo'] = fileEntry._localURI
+                                    re = self._request('sendPhoto', 'post', json=di)
+                                else:
+                                    di['document'] = fileEntry._localURI
+                                    re = self._request('sendDocument', 'post', json=di)
                             else:
                                 fileEntry.open()
-                                re = self._request('sendPhoto', 'post', json=di, files={
-                                                   'photo': (fileEntry._fullfn, fileEntry._f)})
+                                if not should_use_file:
+                                    re = self._request('sendPhoto', 'post', json=di, files={
+                                                       'photo': (fileEntry._fullfn, fileEntry._f)})
+                                else:
+                                    re = self._request('sendDocument', 'post', json=di, files={
+                                                       'document': (fileEntry._fullfn, fileEntry._f)})
                     else:
                         re = self._request('sendMessage', 'post', json=di)
                     if re is not None and 'ok' in re and re['ok']:
@@ -256,6 +271,8 @@ class main:
                             del di['caption']
                             if 'photo' in di:
                                 del di['photo']
+                            if 'document' in di:
+                                del di['document']
                             f = False
                             if config.disable_web_page_preview:
                                 di['disable_web_page_preview'] = True
@@ -396,6 +413,9 @@ class main:
                     fileEntry = self._tempFileEntries.add(i)
                     if not fileEntry.ok:
                         return None
+                    should_use_file = False if fileEntry._fileSize < MAX_PHOTO_SIZE and not config.send_img_as_file else True
+                    if should_use_file:
+                        di2['type'] = 'document'
                     if self._setting.sendFileURLScheme:
                         di2['media'] = fileEntry._localURI
                     else:
@@ -527,6 +547,23 @@ class main:
                         if re is not None and 'ok' in re and re['ok']:
                             break
                         sleep(5)
+                elif di['media'][0]['type'] == 'document':
+                    if not self._setting.downloadMediaFile or self._setting.sendFileURLScheme:
+                        di['document'] = di['media'][0]['media']
+                    else:
+                        mekey = di['media'][0]['media'][9:]
+                        di3['document'] = di3[mekey]
+                        del di3[mekey]
+                    del di['media']
+                    for _ in range(self._setting.maxRetryCount + 1):
+                        if not self._setting.downloadMediaFile or self._setting.sendFileURLScheme:
+                            re = self._request('sendDocument', 'post', json=di)
+                        else:
+                            re = self._request(
+                                'sendDocument', 'post', json=di, files=di3)
+                        if re is not None and 'ok' in re and re['ok']:
+                            break
+                        sleep(5)
             if len(text) > 0:
                 di = {}
                 di['chat_id'] = chatId
@@ -607,7 +644,7 @@ class main:
             self._request("logOut", "post",
                           telegramBotApiServer="https://api.telegram.org")
         remove('Temp')
-        self._tempFileEntries = FileEntries()
+        self._tempFileEntries = FileEntries(self)
         self._me = self._request('getMe')
         self._rssMetaList = rssMetaList()
         print(self._me)
@@ -1209,7 +1246,7 @@ class callbackQueryHandle(Thread):
                 self._main._request("editMessageText", "post", json=di)
                 self.answer()
                 return
-            elif self._inlineKeyBoardCommand in [InlineKeyBoardCallBack.DisableWebPagePreview, InlineKeyBoardCallBack.ShowRSSTitle, InlineKeyBoardCallBack.ShowContentTitle, InlineKeyBoardCallBack.ShowContent, InlineKeyBoardCallBack.SendMedia, InlineKeyBoardCallBack.DisplayEntryLink]:
+            elif self._inlineKeyBoardCommand in [InlineKeyBoardCallBack.DisableWebPagePreview, InlineKeyBoardCallBack.ShowRSSTitle, InlineKeyBoardCallBack.ShowContentTitle, InlineKeyBoardCallBack.ShowContent, InlineKeyBoardCallBack.SendMedia, InlineKeyBoardCallBack.DisplayEntryLink, InlineKeyBoardCallBack.SendImgAsFile]:
                 if self._inlineKeyBoardCommand == InlineKeyBoardCallBack.DisableWebPagePreview:
                     self._rssMeta.config.disable_web_page_preview = not self._rssMeta.config.disable_web_page_preview
                 elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.ShowRSSTitle:
@@ -1222,6 +1259,8 @@ class callbackQueryHandle(Thread):
                     self._rssMeta.config.send_media = not self._rssMeta.config.send_media
                 elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.DisplayEntryLink:
                     self._rssMeta.config.display_entry_link = not self._rssMeta.config.display_entry_link
+                elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.SendImgAsFile:
+                    self._rssMeta.config.send_img_as_file = not self._rssMeta.config.send_img_as_file
                 di = {'chat_id': self._rssMeta.chatId,
                       'message_id': self._rssMeta.messageId}
                 di['text'] = getMediaInfo(
@@ -1380,7 +1419,7 @@ class callbackQueryHandle(Thread):
                 self._main._request("editMessageText", "post", json=di)
                 self.answer()
                 return
-            elif self._inlineKeyBoardForRSSListCommand in [InlineKeyBoardForRSSList.DisableWebPagePreview, InlineKeyBoardForRSSList.ShowRSSTitle, InlineKeyBoardForRSSList.ShowContentTitle, InlineKeyBoardForRSSList.ShowContent, InlineKeyBoardForRSSList.SendMedia, InlineKeyBoardForRSSList.DisplayEntryLink]:
+            elif self._inlineKeyBoardForRSSListCommand in [InlineKeyBoardForRSSList.DisableWebPagePreview, InlineKeyBoardForRSSList.ShowRSSTitle, InlineKeyBoardForRSSList.ShowContentTitle, InlineKeyBoardForRSSList.ShowContent, InlineKeyBoardForRSSList.SendMedia, InlineKeyBoardForRSSList.DisplayEntryLink, InlineKeyBoardForRSSList.SendImgAsFile]:
                 di = {'chat_id': self._data['message']['chat']['id'],
                       'message_id': self._data['message']['message_id']}
                 rssList = self._main._db.getRSSListByChatId(chatId)
@@ -1405,6 +1444,8 @@ class callbackQueryHandle(Thread):
                     config.send_media = not config.send_media
                 elif self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.DisplayEntryLink:
                     config.display_entry_link = not config.display_entry_link
+                elif self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.SendImgAsFile:
+                    config.send_img_as_file = not config.send_img_as_file
                 updated = self._main._db.updateChatConfig(chatEntry)
                 if updated:
                     self.answer('修改设置成功')

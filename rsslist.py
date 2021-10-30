@@ -42,6 +42,7 @@ class InlineKeyBoardForRSSList(Enum):
     SendMedia = 16
     ForceUpdate = 17
     DisplayEntryLink = 18
+    SendImgAsFile = 19
 
 
 def getTextContentForRSSInList(rssEntry: RSSEntry, s: settings) -> str:
@@ -72,6 +73,7 @@ def getTextContentForRSSInList(rssEntry: RSSEntry, s: settings) -> str:
         text.addtotext(f"显示内容：{config.show_content}")
         text.addtotext(f"发送媒体：{config.send_media}")
         text += f"单独一行显示链接：{config.display_entry_link}"
+        text += f"发送图片为文件：{config.send_img_as_file}"
     return text.tostr()
 
 
@@ -190,6 +192,10 @@ def getInlineKeyBoardForRSSSettingsInList(chatId: int, rssEntry: RSSEntry, index
             {'text': temp, 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.SendMedia.value},{index},{rssEntry.id}'})
         temp = '禁用单独一行显示链接' if config.display_entry_link else '启用单独一行显示链接'
         d[i].append({'text': temp, 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.DisplayEntryLink.value},{index},{rssEntry.id}'})
+        d.append([])
+        i += 1
+        temp = '禁用发送图片为文件' if config.send_img_as_file else '启用发送图片为文件'
+        d[i].append({'text': temp, 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.SendImgAsFile.value},{index},{rssEntry.id}'})
     d.append([])
     i = i + 1
     d[i].append(
