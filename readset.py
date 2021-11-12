@@ -58,6 +58,7 @@ class settings:
         self._miraiApiQQ = int(d['miraiApiQQ']) if 'miraiApiQQ' in d and d['miraiApiQQ'].isnumeric() else None
         self._miraiApiHTTPVer = d['miraiApiHTTPVer'] if 'miraiApiHTTPVer' in d and d['miraiApiHTTPVer'] != '' else None
         self._blackList = d['blackList'] if 'blackList' in d and d['blackList'] != '' else None
+        self._downloadTimeOut = int(d['downloadTimeOut']) if 'downloadTimeOut' in d and d['downloadTimeOut'].isnumeric() else 10
 
     @property
     def token(self) -> str:
@@ -119,18 +120,23 @@ class settings:
     def miraiApiHTTPVer(self) -> str:
         return self._miraiApiHTTPVer
 
+    @property
+    def downloadTimeOut(self) -> int:
+        return self._downloadTimeOut
+
 
 class commandline:
     def __init__(self, commandline: List[str] = None):
         self._config = 'settings.txt'
         self._rebuildHashlist = False
         self._exitAfterRebuild = False
+        self._remoteDebug = False
         if commandline is not None:
             self.parse(commandline)
 
     def parse(self, commandline: List[str]):
         cml = getopt(commandline, 'c:', [
-                     'rebuild-hashlist', 'exit-after-rebuild', 'config='])
+                     'rebuild-hashlist', 'exit-after-rebuild', 'config=', 'remote-debug'])
         for i in cml[0]:
             if i[0] in ['-c', '--config']:
                 self._config = i[1]
@@ -138,6 +144,8 @@ class commandline:
                 self._rebuildHashlist = True
             if i[0] == '--exit-after-rebuild':
                 self._exitAfterRebuild = True
+            if i[0] == '--remote-debug':
+                self._remoteDebug = True
 
     @property
     def rebuildHashlist(self):
@@ -151,3 +159,7 @@ class commandline:
     @property
     def exitAfterRebuild(self):
         return self._exitAfterRebuild
+
+    @property
+    def remoteDebug(self):
+        return self._remoteDebug

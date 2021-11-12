@@ -641,6 +641,11 @@ class main:
         self._commandLine = commandline()
         if len(sys.argv) > 1:
             self._commandLine.parse(sys.argv[1:])
+        if self._commandLine.remoteDebug:
+            import debugpy
+            debugpy.listen(('0.0.0.0', 4500))
+            print("Waiting for debugger attach")
+            debugpy.wait_for_client()
         if not exists('settings.txt'):
             print('找不到settings.txt')
             return -1

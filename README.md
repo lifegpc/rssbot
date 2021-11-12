@@ -31,6 +31,7 @@ rssbotLib=rssbot.dll
 - [miraiApiHTTPAuthKey](#miraiapihttpauthkey)
 - [miraiApiQQ](#miraiapiqq)
 - [blackList](#blacklist)
+- [downloadTimeOut](#downloadtimeout)
 ### token
 必填参数。Telegram Bot API Token。向[@BotFather](https://t.me/BotFather)请求新建Bot，即可得到。
 ### maxCount
@@ -74,10 +75,13 @@ rssbotLib=rssbot.dll
 可选参数。指定mirai-api-http的版本，只有当获取版本失败时采用该值。
 ### blackList
 可选参数。被封禁的用户/chat ID。被封禁的用户/chat无法与bot交互。可以使用`,`分隔两个不同的ID。
+### downloadTimeOut
+可选参数。下载文件时超时时间。单位s。默认为10s。
 ## 命令行参数
 ```text
 --rebuild-hashlist 重建hashList
 --exit-after-rebuild 再重建hashList后退出
 -c/--config <file> 从指定文件中读取配置
+--remote-debug 启用远程调试
 ```
 

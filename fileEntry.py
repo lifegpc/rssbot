@@ -80,7 +80,7 @@ class FileEntry:
             mkdir(self._tempdir)
         self._abspath = abspath(f'Temp/{self._fn}{self._ext}')
         try:
-            self._r = get(url, stream=True)
+            self._r = get(url, stream=True, timeout=self._m._setting.downloadTimeOut)
             if self._r.ok:
                 with open(self._abspath, 'wb') as f:
                     for chunk in self._r.iter_content(1024):
