@@ -23,7 +23,6 @@ rssbotLib=rssbot.dll
 - [telegramBotApiServer](#telegrambotapiserver)
 - [downloadMediaFile](#downloadmediafile)
 - [sendFileURLScheme](#sendfileurlscheme)
-- [rssbotLib](#rssbotlib)
 - [databaseLocation](#databaselocation)
 - [retryTTL](#retryttl)
 - [botOwnerList](#botownerlist)
@@ -49,11 +48,6 @@ rssbotLib=rssbot.dll
 注：即使使用自建Telegram Bot API Server，如果不启用此功能，依旧会受到最大20M文件或5M图片的限制。
 ### sendFileURLScheme
 可选参数。是否使用本地文件（`file:///`）协议发送媒体。需要确保启用`downloadMediaFile`并且使用的是本地的Telegram Bot API Server（`telegramBotApiServer`）。默认值为否(`0`)。
-### rssbotLib
-已弃用。
-新版本的[RSSBotLib](https://github.com/lifegpc/ffmpeg-study/tree/master/rssbotlib)采用Python Extension Module模式，将动态库放置于Module Path内即可加载。加载后默认启用以下功能：
-- 发送视频时附带时长，视频分辨率大小信息（在视频文件大于10MB时非常有用）。
-- 支持Pixiv的[动图](https://www.pixiv.help/hc/zh-cn/articles/235584628-动图是什么-)（对HTML标签有要求，详见[wiki](https://github.com/lifegpc/rssbot/wiki/Pixiv动图自定义HTML标签：-ugoira-)）。
 ### databaseLocation
 可选参数。数据库位置。默认值为`data.db`。
 ### retryTTL
