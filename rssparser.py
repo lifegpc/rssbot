@@ -13,6 +13,7 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+from typing import List
 from xml.dom import minidom
 defusedxmlSupported = True
 try:
@@ -27,6 +28,7 @@ import sys
 import requests
 from traceback import format_exc
 from urllib.parse import urljoin
+from json import loads as loadjson
 
 
 class HTMLContent:
@@ -50,13 +52,14 @@ class HTMLSimpleParser(HTMLParser):
     def __init__(self, baseUrl: str = None):
         self.data = ''
         self.tagName = []
-        self.tagContent = []
+        self.tagContent: List[HTMLContent] = []
         self.tagAttrs = []
         self.imgList = []
         self.videoList = []
         self.baseUrl = ''
         if baseUrl is not None:
             self.baseUrl = baseUrl
+        self.ugoiraList = []
         HTMLParser.__init__(self)
 
     def handle_startendtag(self, tag, attrs):
@@ -65,6 +68,9 @@ class HTMLSimpleParser(HTMLParser):
                 self.data = self.data + '\n'
             else:
                 self.tagContent[-1].add('\n')
+        else:
+            self.handle_starttag(tag, attrs)
+            self.handle_endtag(tag)
 
     def handle_starttag(self, tag, attrs):
         if tag == 'br':
@@ -89,6 +95,29 @@ class HTMLSimpleParser(HTMLParser):
             if 'src' in p:
                 self.videoList.append(p)
             return
+        elif tag == 'ugoira':
+            p = {}
+            for key, value in attrs:
+                if key == 'src':
+                    p['src'] = urljoin(self.baseUrl, value)
+                elif key == 'poster':
+                    p['poster'] = urljoin(self.baseUrl, value)
+                elif key == 'frames':
+                    try:
+                        frames = loadjson(value)
+                        if not isinstance(frames, list):
+                            raise ValueError(f"Invaild frames: {frames}")
+                        for i in frames:
+                            if not isinstance(i['file'], str):
+                                raise ValueError(f"Invalid file: {i['file']}")
+                            if not isinstance(i['delay'], (int, float)):
+                                raise ValueError(f"Invalid delay: {i['delay']}")
+                        p['frames'] = frames
+                    except Exception:
+                        print(format_exc())
+            if 'src' in p and 'poster' in p and 'frames' in p:
+                self.ugoiraList.append(p)
+            return
         self.tagName.append(tag)
         self.tagContent.append(HTMLContent())
         self.tagAttrs.append('')
@@ -110,7 +139,7 @@ class HTMLSimpleParser(HTMLParser):
             elif len(self.tagName) > 1:
                 self.tagContent[-2].add(
                     f"<{tag}{self.tagAttrs[-1]}>{self.tagContent[-1].export()}</{tag}>")
-        elif tag not in ['img', 'video', 'br']:
+        elif tag not in ['img', 'video', 'br', 'ugoira']:
             if len(self.tagName) == 1:
                 self.data = f"{self.data}{self.tagContent[-1].export()}"
             elif len(self.tagName) > 1:
@@ -233,6 +262,7 @@ class RSSParser:
                         del m['content:encoded']
                     m['imgList'] = p.imgList
                     m['videoList'] = p.videoList
+                    m['ugoiraList'] = p.ugoiraList
             else:
                 m[i.nodeName] = ''
                 for k in i.childNodes:
@@ -274,6 +304,7 @@ class RSSParser:
                     if i.nodeName in ['content', 'summary']:
                         m['imgList'] = p.imgList
                         m['videoList'] = p.videoList
+                        m['ugoiraList'] = p.ugoiraList
                         m['description'] = m[i.nodeName]
                         del m[i.nodeName]
                 elif i.nodeValue is None and len(i.childNodes) == 0:
@@ -304,6 +335,7 @@ class RSSParser:
                     if i.nodeName in ['content', 'summary']:
                         m['imgList'] = p.imgList
                         m['videoList'] = p.videoList
+                        m['ugoiraList'] = p.ugoiraList
                         m['description'] = m[i.nodeName]
                         del m[i.nodeName]
                 elif typ == 'xhtml':
@@ -318,6 +350,7 @@ class RSSParser:
                     if i.nodeName in ['content', 'summary']:
                         m['imgList'] = p.imgList
                         m['videoList'] = p.videoList
+                        m['ugoiraList'] = p.ugoiraLists
                         m['description'] = m[i.nodeName]
                         del m[i.nodeName]
             elif len(i.childNodes) == 0:

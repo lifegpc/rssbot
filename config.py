@@ -26,10 +26,11 @@ class RSSConfig:
         self.display_entry_link = False
         self.send_img_as_file = False
         self.send_origin_file_name = False
+        self.send_ugoira_with_origin_pix_fmt = False
         self.update(d)
 
     def toJson(self):
-        return dumps({'disable_web_page_preview': self.disable_web_page_preview, 'show_RSS_title': self.show_RSS_title, 'show_Content_title': self.show_Content_title, 'show_content': self.show_content, 'send_media': self.send_media, 'display_entry_link': self.display_entry_link, 'send_img_as_file': self.send_img_as_file}, ensure_ascii=False)
+        return dumps({'disable_web_page_preview': self.disable_web_page_preview, 'show_RSS_title': self.show_RSS_title, 'show_Content_title': self.show_Content_title, 'show_content': self.show_content, 'send_media': self.send_media, 'display_entry_link': self.display_entry_link, 'send_img_as_file': self.send_img_as_file, 'send_ugoira_with_origin_pix_fmt': self.send_ugoira_with_origin_pix_fmt}, ensure_ascii=False)
 
     def update(self, d: dict):
         if d is not None:

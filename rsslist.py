@@ -19,6 +19,7 @@ from enum import Enum, unique
 from math import ceil, floor
 from textc import textc, timeToStr
 from readset import settings
+from rssbotlib import have_rssbotlib
 
 
 @unique
@@ -45,6 +46,7 @@ class InlineKeyBoardForRSSList(Enum):
     SendImgAsFile = 19
     GlobalSettingsPage = 20
     SendOriginFileName = 21
+    SendUgoiraWithOriginPixFmt = 22
 
 
 def getTextContentForRSSInList(rssEntry: RSSEntry, s: settings) -> str:
@@ -76,6 +78,8 @@ def getTextContentForRSSInList(rssEntry: RSSEntry, s: settings) -> str:
         text.addtotext(f"发送媒体：{config.send_media}")
         text += f"单独一行显示链接：{config.display_entry_link}"
         text += f"发送图片为文件：{config.send_img_as_file}"
+        if have_rssbotlib:
+            text += f'发送原始像素格式的Pixiv动图：{config.send_ugoira_with_origin_pix_fmt}'
         text += f"RSS全局设置："
         text += f"发送时使用原文件名：{config.send_origin_file_name}"
     return text.tostr()
@@ -204,6 +208,9 @@ def getInlineKeyBoardForRSSSettingsInList(chatId: int, rssEntry: RSSEntry, index
         i += 1
         temp = '禁用发送图片为文件' if config.send_img_as_file else '启用发送图片为文件'
         d[i].append({'text': temp, 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.SendImgAsFile.value},{index},{rssEntry.id}'})
+        if have_rssbotlib:
+            temp = f"{'禁用' if config.send_ugoira_with_origin_pix_fmt else '启用'}发送原始像素格式的Pixiv动图"
+            d[i].append({'text': temp, 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.SendUgoiraWithOriginPixFmt.value},{index},{rssEntry.id}'})
     d.append([])
     i = i + 1
     d[i].append(

@@ -16,10 +16,12 @@
 from enum import unique, Enum
 from traceback import print_exc
 try:
-    from _rssbotlib import version, VideoInfo
+    from _rssbotlib import version, VideoInfo, convert_ugoira_to_mp4, AVDict
     have_rssbotlib = True
 except ImportError:
     have_rssbotlib = False
+if have_rssbotlib:
+    from fileEntry import FileEntry, remove
 
 
 @unique
@@ -35,7 +37,7 @@ if have_rssbotlib:
             from rssbot import main
             self._main: main = m
             self._version = version()
-            if self._version is None or self._version != [1, 0, 0, 0]:
+            if self._version is None or self._version != [1, 0, 0, 1]:
                 raise ValueError('RSSBotLib Version unknown or not supported.')
 
         def addVideoInfo(self, url: str, data: dict, loc: str = None) -> AddVideoInfoResult:
@@ -71,6 +73,27 @@ if have_rssbotlib:
             except Exception:
                 print_exc()
                 return AddVideoInfoResult.ERROR
+
+        def convert_ugoira_to_mp4(self, f: FileEntry, frames, force_yuv420p: bool):
+            try:
+                na = '_yuv420p' if force_yuv420p else '_origin'
+                if f.getSubFile(na, 'mp4') is not None:
+                    return True
+                dst = f.getSubPath(na, 'mp4')
+                opt = AVDict()
+                if force_yuv420p:
+                    opt['force_yuv420p'] = ''
+                if not convert_ugoira_to_mp4(f._abspath, dst, frames, opts=opt):
+                    return False
+                f.addSubFile(na, 'mp4')
+                return True
+            except Exception:
+                print_exc()
+                try:
+                    remove(dst)
+                except Exception:
+                    print_exc()
+                return False
 
 
 def loadRSSBotLib(m):

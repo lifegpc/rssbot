@@ -53,6 +53,7 @@ rssbotLib=rssbot.dll
 已弃用。
 新版本的[RSSBotLib](https://github.com/lifegpc/ffmpeg-study/tree/master/rssbotlib)采用Python Extension Module模式，将动态库放置于Module Path内即可加载。加载后默认启用以下功能：
 - 发送视频时附带时长，视频分辨率大小信息（在视频文件大于10MB时非常有用）。
+- 支持Pixiv的[动图](https://www.pixiv.help/hc/zh-cn/articles/235584628-动图是什么-)（对HTML标签有要求，详见[wiki](https://github.com/lifegpc/rssbot/wiki/Pixiv动图自定义HTML标签：-ugoira-)）。
 ### databaseLocation
 可选参数。数据库位置。默认值为`data.db`。
 ### retryTTL

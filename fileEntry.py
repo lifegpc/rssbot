@@ -19,7 +19,7 @@ from time import time_ns
 from random import randint
 from requests import get
 from os import remove as removeFile, mkdir, listdir, removedirs
-from typing import List
+from typing import Dict, List
 from threading import Lock
 from config import RSSConfig
 
@@ -37,6 +37,40 @@ def remove(s: str):
             removedirs(s)
     except:
         remove(s)
+
+
+class SubFileEntry:
+    def __init__(self, path: str) -> None:
+        self._path = path
+        self._abspath = path
+        self._fileExist = True if exists(self._path) else False
+        if self._fileExist:
+            self._fileSize = getsize(self._path)
+        self._localURI = f"file://{self._path}" if self._path[0] == '/' else f"file:///{self._path}"
+        self._f = None
+
+    def delete(self):
+        if not self._fileExist:
+            return
+        if self._f is not None and not self._f.closed:
+            self._f.close()
+        try:
+            remove(self._path)
+            self._fileExist = False
+        except:
+            pass
+
+    def open(self) -> bool:
+        if not self._fileExist:
+            return False
+        if self._f is not None and not self._f.closed:
+            self._f.seek(0, 0)
+            return True
+        try:
+            self._f = open(self._path, 'rb')
+            return True
+        except:
+            return False
 
 
 class FileEntry:
@@ -98,8 +132,26 @@ class FileEntry:
             self._fileSize = getsize(self._abspath)
         self._localURI = f"file://{self._abspath}" if self._abspath[0] == '/' else f"file:///{self._abspath}"
         self._f = None
+        self._subFileDict: Dict[str, SubFileEntry] = {}
+
+    def addSubFile(self, name: str, ext: str):
+        if not isinstance(name, str) or len(name) == 0:
+            raise ValueError('At least 1 char.')
+        if not isinstance(ext, str) or len(ext) == 0:
+            ext = 'temp'
+        na = f"{name}.{ext}"
+        if na in self._subFileDict:
+            return False
+        p = self.getSubPath(name, ext)
+        if not exists(p):
+            raise FileNotFoundError(p)
+        self._subFileDict[na] = SubFileEntry(p)
+        return True
 
     def delete(self):
+        for key in self._subFileDict:
+            self._subFileDict[key].delete()
+        self._subFileDict = {}
         if not self._fileExist:
             return
         if self._f is not None and not self._f.closed:
@@ -111,6 +163,22 @@ class FileEntry:
             self._fileExist = False
         except:
             pass
+
+    def getSubFile(self, name: str, ext: str):
+        if not isinstance(name, str) or len(name) == 0:
+            raise ValueError('At least 1 char.')
+        if not isinstance(ext, str) or len(ext) == 0:
+            ext = 'temp'
+        na = f"{name}.{ext}"
+        if na in self._subFileDict:
+            return self._subFileDict[na]
+
+    def getSubPath(self, name: str, ext: str):
+        if not isinstance(name, str) or len(name) == 0:
+            raise ValueError('At least 1 char.')
+        if not isinstance(ext, str) or len(ext) == 0:
+            ext = 'temp'
+        return splitext(self._abspath)[0] + name + '.' + ext
 
     def open(self) -> bool:
         if not self._fileExist:
