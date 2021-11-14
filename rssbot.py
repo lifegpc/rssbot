@@ -477,7 +477,7 @@ class main:
                             if 'document' in di:
                                 del di['document']
                             if 'animation' in di:
-                                del di['video']
+                                del di['animation']
                             if 'thumb' in di:
                                 del di['thumb']
                             if 'caption' in di:
