@@ -13,6 +13,7 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+from config import SendUgoiraMethod
 from database import database, userStatus, RSSConfig
 from RSSEntry import HashEntry, HashEntries, calHash, ChatEntry
 from os.path import exists
@@ -45,6 +46,7 @@ from json import loads
 
 MAX_ITEM_IN_MEDIA_GROUP = 10
 MAX_PHOTO_SIZE = 10485760
+MAX_ANIMATION_SIZE = 52428800
 
 
 def getMediaInfo(m: dict, config: RSSConfig = RSSConfig()) -> str:
@@ -75,6 +77,7 @@ def getMediaInfo(m: dict, config: RSSConfig = RSSConfig()) -> str:
     s += f"\n发送图片为文件：{config.send_img_as_file}"
     if have_rssbotlib:
         s += f"\n发送原始像素格式的Pixiv动图：{config.send_ugoira_with_origin_pix_fmt}"
+        s += f'\n发送Pixiv动图为{config.send_ugoira_method}'
     s += f"\nRSS全局设置："
     s += f"\n发送时使用原文件名：{config.send_origin_file_name}"
     return s
@@ -98,6 +101,7 @@ class InlineKeyBoardCallBack(Enum):
     GlobalSettingsPage = 13
     SendOriginFileName = 14
     SendUgoiraWithOriginPixFmt = 15
+    SendUgoiraMethod = 16
 
 
 def getInlineKeyBoardWhenRSS(hashd: str, m: dict, isOwn: bool) -> dict:
@@ -164,6 +168,11 @@ def getInlineKeyBoardWhenRSS2(hashd: str, config: RSSConfig) -> str:
     if have_rssbotlib:
         temp = f"{'禁用' if config.send_ugoira_with_origin_pix_fmt else '启用'}发送原始像素格式的Pixiv动图"
         d[i].append({'text': temp, 'callback_data': f'0,{hashd},{InlineKeyBoardCallBack.SendUgoiraWithOriginPixFmt.value}'})
+        d.append([])
+        i += 1
+        temp2 = SendUgoiraMethod((config.send_ugoira_method.value + 1) % 4)
+        temp = f'发送Pixiv动图为{temp2}'
+        d[i].append({'text': temp, 'callback_data': f'0,{hashd},{InlineKeyBoardCallBack.SendUgoiraMethod.value},{temp2.value}'})
     d.append([])
     i += 1
     d[i].append(
@@ -438,19 +447,51 @@ class main:
                             mp4_ok = z.ok and self._rssbotLib is not None and self._rssbotLib.convert_ugoira_to_mp4(z, content['ugoiraList'][0]['frames'], force_yuv420p)
                             if mp4_ok:
                                 mp4 = z.getSubFile('_yuv420p' if force_yuv420p else '_origin', 'mp4')
+                                if config.send_ugoira_method == SendUgoiraMethod.VIDEO:
+                                    send_method = 1
+                                elif config.send_ugoira_method == SendUgoiraMethod.FILE:
+                                    send_method = 2
+                                elif mp4._fileSize >= MAX_ANIMATION_SIZE:
+                                    if config.send_ugoira_method == SendUgoiraMethod.ANIMATION_FILE:
+                                        send_method = 2
+                                    else:
+                                        send_method = 1
+                                else:
+                                    send_method = 0
                                 # TODO: Generate a better thumb
                                 if self._setting.sendFileURLScheme:
                                     del di['thumb']
-                                    di['animation'] = mp4._localURI
+                                    if send_method == 0:
+                                        di['animation'] = mp4._localURI
+                                    elif send_method == 1:
+                                        di['video'] = mp4._localURI
+                                    elif send_method == 2:
+                                        di['document'] = mp4._localURI
                                 else:
                                     del di2['thumb']
                                     mp4.open()
-                                    di2['animation'] = (mp4._path, mp4._f)
-                                self._rssbotLib.addVideoInfo(mp4._path, di)
+                                    if send_method == 0:
+                                        di2['animation'] = (mp4._path, mp4._f)
+                                    elif send_method == 1:
+                                        di2['video'] = (mp4._path, mp4._f)
+                                    elif send_method == 2:
+                                        di2['document'] = (mp4._path, mp4._f)
+                                if send_method < 2:
+                                    self._rssbotLib.addVideoInfo(mp4._path, di)
                                 if self._setting.sendFileURLScheme:
-                                    re = self._request('sendAnimation', 'post', json=di)
+                                    if send_method == 0:
+                                        re = self._request('sendAnimation', 'post', json=di)
+                                    elif send_method == 1:
+                                        re = self._request('sendVideo', 'post', json=di)
+                                    elif send_method == 2:
+                                        re = self._request('sendDocument', 'post', json=di)
                                 else:
-                                    re = self._request('sendAnimation', 'post', json=di, files=di2)
+                                    if send_method == 0:
+                                        re = self._request('sendAnimation', 'post', json=di, files=di2)
+                                    elif send_method == 1:
+                                        re = self._request('sendVideo', 'post', json=di, files=di2)
+                                    elif send_method == 2:
+                                        re = self._request('sendDocument', 'post', json=di, files=di2)
                             else:
                                 should_use_file = False if fileEntry._fileSize < MAX_PHOTO_SIZE and not config.send_img_as_file else True
                                 if self._setting.sendFileURLScheme:
@@ -478,6 +519,8 @@ class main:
                                 del di['document']
                             if 'animation' in di:
                                 del di['animation']
+                            if 'video' in di:
+                                del di['video']
                             if 'thumb' in di:
                                 del di['thumb']
                             if 'caption' in di:
@@ -1375,7 +1418,7 @@ class callbackQueryHandle(Thread):
                 self._main._request("editMessageText", "post", json=di)
                 self.answer()
                 return
-            elif self._inlineKeyBoardCommand in [InlineKeyBoardCallBack.DisableWebPagePreview, InlineKeyBoardCallBack.ShowRSSTitle, InlineKeyBoardCallBack.ShowContentTitle, InlineKeyBoardCallBack.ShowContent, InlineKeyBoardCallBack.SendMedia, InlineKeyBoardCallBack.DisplayEntryLink, InlineKeyBoardCallBack.SendImgAsFile, InlineKeyBoardCallBack.SendUgoiraWithOriginPixFmt]:
+            elif self._inlineKeyBoardCommand in [InlineKeyBoardCallBack.DisableWebPagePreview, InlineKeyBoardCallBack.ShowRSSTitle, InlineKeyBoardCallBack.ShowContentTitle, InlineKeyBoardCallBack.ShowContent, InlineKeyBoardCallBack.SendMedia, InlineKeyBoardCallBack.DisplayEntryLink, InlineKeyBoardCallBack.SendImgAsFile, InlineKeyBoardCallBack.SendUgoiraWithOriginPixFmt, InlineKeyBoardCallBack.SendUgoiraMethod]:
                 if self._inlineKeyBoardCommand == InlineKeyBoardCallBack.DisableWebPagePreview:
                     self._rssMeta.config.disable_web_page_preview = not self._rssMeta.config.disable_web_page_preview
                 elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.ShowRSSTitle:
@@ -1392,6 +1435,8 @@ class callbackQueryHandle(Thread):
                     self._rssMeta.config.send_img_as_file = not self._rssMeta.config.send_img_as_file
                 elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.SendUgoiraWithOriginPixFmt:
                     self._rssMeta.config.send_ugoira_with_origin_pix_fmt = not self._rssMeta.config.send_ugoira_with_origin_pix_fmt
+                elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.SendUgoiraMethod:
+                    self._rssMeta.config.send_ugoira_method = SendUgoiraMethod(int(self._inputList[3]))
                 di = {'chat_id': self._rssMeta.chatId,
                       'message_id': self._rssMeta.messageId}
                 di['text'] = getMediaInfo(
@@ -1578,7 +1623,7 @@ class callbackQueryHandle(Thread):
                 self._main._request("editMessageText", "post", json=di)
                 self.answer()
                 return
-            elif self._inlineKeyBoardForRSSListCommand in [InlineKeyBoardForRSSList.DisableWebPagePreview, InlineKeyBoardForRSSList.ShowRSSTitle, InlineKeyBoardForRSSList.ShowContentTitle, InlineKeyBoardForRSSList.ShowContent, InlineKeyBoardForRSSList.SendMedia, InlineKeyBoardForRSSList.DisplayEntryLink, InlineKeyBoardForRSSList.SendImgAsFile, InlineKeyBoardForRSSList.SendUgoiraWithOriginPixFmt]:
+            elif self._inlineKeyBoardForRSSListCommand in [InlineKeyBoardForRSSList.DisableWebPagePreview, InlineKeyBoardForRSSList.ShowRSSTitle, InlineKeyBoardForRSSList.ShowContentTitle, InlineKeyBoardForRSSList.ShowContent, InlineKeyBoardForRSSList.SendMedia, InlineKeyBoardForRSSList.DisplayEntryLink, InlineKeyBoardForRSSList.SendImgAsFile, InlineKeyBoardForRSSList.SendUgoiraWithOriginPixFmt, InlineKeyBoardForRSSList.SendUgoiraMethod]:
                 di = {'chat_id': self._data['message']['chat']['id'],
                       'message_id': self._data['message']['message_id']}
                 rssList = self._main._db.getRSSListByChatId(chatId)
@@ -1607,6 +1652,8 @@ class callbackQueryHandle(Thread):
                     config.send_img_as_file = not config.send_img_as_file
                 elif self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.SendUgoiraWithOriginPixFmt:
                     config.send_ugoira_with_origin_pix_fmt = not config.send_ugoira_with_origin_pix_fmt
+                elif self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.SendUgoiraMethod:
+                    config.send_ugoira_method = SendUgoiraMethod(int(self._inputList[5]))
                 updated = self._main._db.updateChatConfig(chatEntry)
                 if updated:
                     self.answer('修改设置成功')

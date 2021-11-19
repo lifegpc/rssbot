@@ -14,6 +14,25 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from json import dumps
+from enum import Enum, unique
+
+
+@unique
+class SendUgoiraMethod(Enum):
+    ANIMATION_VIDEO = 0
+    ANIMATION_FILE = 1
+    VIDEO = 2
+    FILE = 3
+
+    def __str__(self) -> str:
+        if self._value_ == 0:
+            return '动图(太大时视频)'
+        elif self._value_ == 1:
+            return '动图(太大时文件)'
+        elif self._value_ == 2:
+            return '视频'
+        elif self._value_ == 3:
+            return '文件'
 
 
 class RSSConfig:
@@ -27,16 +46,20 @@ class RSSConfig:
         self.send_img_as_file = False
         self.send_origin_file_name = False
         self.send_ugoira_with_origin_pix_fmt = False
+        self.send_ugoira_method = SendUgoiraMethod(0)
         self.update(d)
 
     def toJson(self):
-        return dumps({'disable_web_page_preview': self.disable_web_page_preview, 'show_RSS_title': self.show_RSS_title, 'show_Content_title': self.show_Content_title, 'show_content': self.show_content, 'send_media': self.send_media, 'display_entry_link': self.display_entry_link, 'send_img_as_file': self.send_img_as_file, 'send_ugoira_with_origin_pix_fmt': self.send_ugoira_with_origin_pix_fmt}, ensure_ascii=False)
+        return dumps({'disable_web_page_preview': self.disable_web_page_preview, 'show_RSS_title': self.show_RSS_title, 'show_Content_title': self.show_Content_title, 'show_content': self.show_content, 'send_media': self.send_media, 'display_entry_link': self.display_entry_link, 'send_img_as_file': self.send_img_as_file, 'send_ugoira_with_origin_pix_fmt': self.send_ugoira_with_origin_pix_fmt, 'send_ugoira_method': self.send_ugoira_method.value}, ensure_ascii=False)
 
     def update(self, d: dict):
         if d is not None:
             for k in d.keys():
                 if hasattr(self, k):
-                    setattr(self, k, d[k])
+                    if k == 'send_ugoira_method':
+                        self.send_ugoira_method = SendUgoiraMethod(d[k])
+                    else:
+                        setattr(self, k, d[k])
 
     def toGlobalJson(self):
         return dumps({'send_origin_file_name': self.send_origin_file_name}, ensure_ascii=False)
