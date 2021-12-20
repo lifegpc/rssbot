@@ -833,7 +833,11 @@ class updateThread(Thread):
         self._main = main
 
     def run(self):
+        t = None
         while True:
+            if t is not None and time() - t < 0.1:
+                sleep(0.1)
+            t = time()
             self._main._updateLoop()
 
 
