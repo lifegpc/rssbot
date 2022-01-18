@@ -1210,7 +1210,7 @@ class messageHandle(Thread):
             checked = False
             try:
                 p = RSSParser()
-                p.parse(self._uri)
+                p.parse(self._uri, self._main._setting.RSSTimeout)
                 checked = p.check()
             except:
                 pass

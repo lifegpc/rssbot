@@ -27,7 +27,7 @@ class RSSCheckerThread(Thread):
             if self.__needUpdate(rss) or self._main._commandLine.rebuildHashlist:
                 try:
                     p = RSSParser()
-                    p.parse(rss.url)
+                    p.parse(rss.url, self._main._setting.RSSTimeout)
                     updateTime = int(time())
                     if p.check():
                         meta = p.m

@@ -72,6 +72,8 @@ rssbotLib=rssbot.dll
 可选参数。被封禁的用户/chat ID。被封禁的用户/chat无法与bot交互。可以使用`,`分隔两个不同的ID。
 ### downloadTimeOut
 可选参数。下载文件时超时时间。单位s。默认为10s。
+### RSSTimeout
+可选参数。抓取RSS超时时间。单位s。默认为15s。
 ## 命令行参数
 ```text
 --rebuild-hashlist 重建hashList

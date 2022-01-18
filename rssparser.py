@@ -385,11 +385,11 @@ class RSSParser:
         self.removeblank(self.xmldoc.documentElement)
         self.xmldoc.normalize()
 
-    def parse(self, fn: str):
+    def parse(self, fn: str, timeout: int = 15):
         try:
             if fn.find('://') > -1:
                 header = {"Accept-Encoding": "gzip, deflate"}
-                re = requests.get(fn, headers=header)
+                re = requests.get(fn, headers=header, timeout=timeout)
                 re.encoding = 'utf8'
                 if re.status_code == 200:
                     self.xmldoc = parseString(re.text)
@@ -398,6 +398,7 @@ class RSSParser:
             self.normalize()
             return True
         except:
+            print(f"URI: {fn}\n{format_exc()}")
             return False
 
     def removeblank(self, node):

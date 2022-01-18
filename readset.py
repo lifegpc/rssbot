@@ -59,6 +59,7 @@ class settings:
         self._miraiApiHTTPVer = d['miraiApiHTTPVer'] if 'miraiApiHTTPVer' in d and d['miraiApiHTTPVer'] != '' else None
         self._blackList = d['blackList'] if 'blackList' in d and d['blackList'] != '' else None
         self._downloadTimeOut = int(d['downloadTimeOut']) if 'downloadTimeOut' in d and d['downloadTimeOut'].isnumeric() else 10
+        self._RSSTimeout = int(d['RSSTimeout']) if 'RSSTimeout' in d and d['RSSTimeout'].isnumeric() else 15
 
     @property
     def token(self) -> str:
@@ -123,6 +124,10 @@ class settings:
     @property
     def downloadTimeOut(self) -> int:
         return self._downloadTimeOut
+
+    @property
+    def RSSTimeout(self) -> int:
+        return self._RSSTimeout
 
 
 class commandline:
