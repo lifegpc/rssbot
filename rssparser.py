@@ -213,7 +213,8 @@ class RSSParser:
                     m[i.nodeName] = i.attributes['href'].nodeValue
             else:
                 if len(i.childNodes) == 0:
-                    m[i.nodeName] = i.nodeValue
+                    if i.nodeValue is not None:
+                        m[i.nodeName] = i.nodeValue
                 elif len(i.childNodes) == 1 and i.firstChild.nodeName == '#cdata-section':
                     m[i.nodeName] = i.firstChild.nodeValue
                 else:
