@@ -48,6 +48,7 @@ class SubFileEntry:
             self._fileSize = getsize(self._path)
         self._localURI = f"file://{self._path}" if self._path[0] == '/' else f"file:///{self._path}"
         self._f = None
+        self._fullfn = basename(self._abspath)
 
     def delete(self):
         if not self._fileExist:

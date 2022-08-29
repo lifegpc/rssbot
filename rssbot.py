@@ -283,12 +283,21 @@ class main:
                             if not fileEntry.ok:
                                 continue
                             should_use_file = False if fileEntry._fileSize < MAX_PHOTO_SIZE and not config.send_img_as_file else True
+                            is_supported_photo = None
+                            if not should_use_file and self._rssbotLib is not None:
+                                is_supported_photo = self._rssbotLib.is_supported_photo(fileEntry._abspath)
+                                if is_supported_photo is not None:
+                                    should_use_file = not is_supported_photo
                             if self._setting.sendFileURLScheme:
                                 if not should_use_file:
                                     di['photo'] = fileEntry._localURI
                                     re = self._request('sendPhoto', 'post', json=di)
                                 else:
                                     di['document'] = fileEntry._localURI
+                                    if is_supported_photo is False:
+                                        if self._rssbotLib.convert_to_tg_thumbnail(fileEntry, 'jpeg'):
+                                            thumb_file = fileEntry.getSubFile('_thumbnail', 'jpeg')
+                                            di['thumb'] = thumb_file._localURI
                                     re = self._request('sendDocument', 'post', json=di)
                             else:
                                 fileEntry.open()
@@ -296,8 +305,13 @@ class main:
                                     re = self._request('sendPhoto', 'post', json=di, files={
                                                        'photo': (fileEntry._fullfn, fileEntry._f)})
                                 else:
-                                    re = self._request('sendDocument', 'post', json=di, files={
-                                                       'document': (fileEntry._fullfn, fileEntry._f)})
+                                    send_files = {'document': (fileEntry._fullfn, fileEntry._f)}
+                                    if is_supported_photo is False:
+                                        if self._rssbotLib.convert_to_tg_thumbnail(fileEntry, 'jpeg'):
+                                            thumb_file = fileEntry.getSubFile('_thumbnail', 'jpeg')
+                                            thumb_file.open()
+                                            send_files['thumb'] = (thumb_file._fullfn, thumb_file._f)
+                                    re = self._request('sendDocument', 'post', json=di, files=send_files)
                     else:
                         re = self._request('sendMessage', 'post', json=di)
                     if re is not None and 'ok' in re and re['ok']:
@@ -544,6 +558,9 @@ class main:
                             return False
                     sleep(5)
         else:
+            # TODO: 修复 PHOTO_INVALID_DIMENSIONS
+            # TODO: 修复部分图片文件缺少缩略图
+            # TODO: 修复图片和文件不可混用
             ind = 0
             if self._setting.downloadMediaFile and not self._setting.sendFileURLScheme:
                 ind2 = 0

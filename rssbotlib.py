@@ -15,8 +15,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from enum import unique, Enum
 from traceback import print_exc
+from typing import Optional
 try:
-    from _rssbotlib import version, VideoInfo, convert_ugoira_to_mp4, AVDict
+    from _rssbotlib import version, VideoInfo, convert_ugoira_to_mp4, AVDict, convert_to_tg_thumbnail
     have_rssbotlib = True
 except ImportError:
     have_rssbotlib = False
@@ -37,7 +38,7 @@ if have_rssbotlib:
             from rssbot import main
             self._main: main = m
             self._version = version()
-            if self._version is None or self._version != [1, 0, 0, 1]:
+            if self._version is None or self._version > [1, 0, 0, 2]:
                 raise ValueError('RSSBotLib Version unknown or not supported.')
 
         def addVideoInfo(self, url: str, data: dict, loc: str = None) -> AddVideoInfoResult:
@@ -94,6 +95,43 @@ if have_rssbotlib:
                 except Exception:
                     print_exc()
                 return False
+
+        def convert_to_tg_thumbnail(self, f: FileEntry, format: str = 'webp') -> bool:
+            try:
+                if f.getSubFile('_thumbnail', format) is not None:
+                    return True
+                dst = f.getSubPath('_thumbnail', format)
+                if not convert_to_tg_thumbnail(f._abspath, dst, format):
+                    return False
+                f.addSubFile('_thumbnail', format)
+                return True
+            except Exception:
+                print_exc()
+                try:
+                    remove(dst)
+                except Exception:
+                    print_exc()
+                return False
+
+        def is_supported_photo(self, f: str) -> Optional[bool]:
+            try:
+                v = VideoInfo()
+                if not v.parse(f):
+                    return None
+                streams = v.streams
+                width = None
+                height = None
+                for stream in streams:
+                    if stream.is_video:
+                        width = stream.width
+                        height = stream.height
+                        break
+                if width is None or height is None:
+                    return None
+                return False if width + height > 10000 or width / height > 20 or height / width > 20 else True
+            except Exception:
+                print_exc()
+                return None
 
 
 def loadRSSBotLib(m):
