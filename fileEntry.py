@@ -89,7 +89,8 @@ class FileEntry:
         self._tempdir: str = None
         ph = urlsplit(url).path
         self._ext = splitext(ph)[1]
-        if self._ext == '' and ph.endswith('/RSSProxy'):  # Support my own proxy link
+        is_rssproxy = ph.endswith('/RSSProxy') or ph.endswith('/RSSProxy/')
+        if self._ext == '' and is_rssproxy:  # Support my own proxy link
             qs = parse_qs(urlsplit(url).query)
             if 't' in qs:
                 self._ext = splitext(urlsplit(qs['t'][0]).path)[1]
@@ -98,9 +99,9 @@ class FileEntry:
         if self._config.send_origin_file_name:
             self._usetempdir = True
             self._tempdir = f"{time_ns()}{randint(0, 9999)}"
-            if ph.endswith('/RSSProxy'):
+            if is_rssproxy:
                 self._fn = basename(splitext(urlsplit(qs['t'][0]).path)[0])
-            if self._fn == '':
+            if self._fn is None or self._fn == '':
                 self._fn = basename(splitext(ph)[0])
             if self._fn == '':
                 self._usetempdir = False

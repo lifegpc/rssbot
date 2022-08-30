@@ -284,9 +284,9 @@ class main:
                                 continue
                             should_use_file = False if fileEntry._fileSize < MAX_PHOTO_SIZE and not config.send_img_as_file else True
                             is_supported_photo = None
-                            if not should_use_file and self._rssbotLib is not None:
+                            if self._rssbotLib is not None:
                                 is_supported_photo = self._rssbotLib.is_supported_photo(fileEntry._abspath)
-                                if is_supported_photo is not None:
+                                if not should_use_file and is_supported_photo is not None:
                                     should_use_file = not is_supported_photo
                             if self._setting.sendFileURLScheme:
                                 if not should_use_file:
@@ -558,16 +558,111 @@ class main:
                             return False
                     sleep(5)
         else:
-            # TODO: 修复 PHOTO_INVALID_DIMENSIONS
-            # TODO: 修复部分图片文件缺少缩略图
-            # TODO: 修复图片和文件不可混用
             ind = 0
             if self._setting.downloadMediaFile and not self._setting.sendFileURLScheme:
                 ind2 = 0
                 di3 = {}
             di['media'] = []
-            for i in content['imgList']:
-                if ind % MAX_ITEM_IN_MEDIA_GROUP == 0 and ind != 0:
+            contain_files = False
+            contain_nonfiles = False
+            re = None
+            def send_file_in_list():
+                nonlocal re
+                if len(di['media']) == 1:
+                    tmp_di = di['media'][0]
+                    for k in di.keys():
+                        if k != 'media':
+                            tmp_di[k] = di[k]
+                    di['media'] = di['media'][1:]
+                    if tmp_di['type'] == 'photo':
+                        if not self._setting.downloadMediaFile or self._setting.sendFileURLScheme:
+                            tmp_di['photo'] = tmp_di['media']
+                        else:
+                            tmp_di3 = {}
+                            mekey = tmp_di['media'][9:]
+                            tmp_di3['photo'] = di3[mekey]
+                            del di3[mekey]
+                        del tmp_di['media']
+                        for _ in range(self._setting.maxRetryCount + 1):
+                            if not self._setting.downloadMediaFile or self._setting.sendFileURLScheme:
+                                re = self._request('sendPhoto', 'post', json=tmp_di)
+                            else:
+                                re = self._request(
+                                    'sendPhoto', 'post', json=tmp_di, files=tmp_di3)
+                            if re is not None and 'ok' in re and re['ok']:
+                                di['reply_to_message_id'] = re['result']['message_id']
+                                break
+                            sleep(5)
+                    elif tmp_di['type'] == 'video':
+                        if not self._setting.downloadMediaFile or self._setting.sendFileURLScheme:
+                            tmp_di['video'] = tmp_di['media']
+                        else:
+                            tmp_di3 = {}
+                            mekey = tmp_di['media'][9:]
+                            tmp_di3['video'] = di3[mekey]
+                            del di3[mekey]
+                            if 'thumb' in tmp_di:
+                                mekey = tmp_di['thumb'][9:]
+                                tmp_di3['thumb'] = di3[mekey]
+                                del di3[mekey]
+                        del tmp_di['media']
+                        for _ in range(self._setting.maxRetryCount + 1):
+                            if not self._setting.downloadMediaFile or self._setting.sendFileURLScheme:
+                                re = self._request('sendVideo', 'post', json=tmp_di)
+                            else:
+                                re = self._request(
+                                    'sendVideo', 'post', json=tmp_di, files=tmp_di3)
+                            if re is not None and 'ok' in re and re['ok']:
+                                di['reply_to_message_id'] = re['result']['message_id']
+                                break
+                            sleep(5)
+                    elif tmp_di['type'] == 'document':
+                        if not self._setting.downloadMediaFile or self._setting.sendFileURLScheme:
+                            tmp_di['document'] = tmp_di['media']
+                        else:
+                            tmp_di3 = {}
+                            mekey = tmp_di['media'][9:]
+                            tmp_di3['document'] = di3[mekey]
+                            del di3[mekey]
+                            if 'thumb' in tmp_di:
+                                mekey = tmp_di['thumb'][9:]
+                                tmp_di3['thumb'] = di3[mekey]
+                                del di3[mekey]
+                        del tmp_di['media']
+                        for _ in range(self._setting.maxRetryCount + 1):
+                            if not self._setting.downloadMediaFile or self._setting.sendFileURLScheme:
+                                re = self._request('sendDocument', 'post', json=tmp_di)
+                            else:
+                                re = self._request(
+                                    'sendDocument', 'post', json=tmp_di, files=tmp_di3)
+                            if re is not None and 'ok' in re and re['ok']:
+                                di['reply_to_message_id'] = re['result']['message_id']
+                                break
+                            sleep(5)
+                    elif tmp_di['type'] == 'animation':
+                        if not self._setting.downloadMediaFile or self._setting.sendFileURLScheme:
+                            tmp_di['animation'] = tmp_di['media']
+                        else:
+                            tmp_di3 = {}
+                            mekey = tmp_di['media'][9:]
+                            tmp_di3['animation'] = di3[mekey]
+                            del di3[mekey]
+                            if 'thumb' in tmp_di:
+                                mekey = tmp_di['thumb'][9:]
+                                tmp_di3['thumb'] = di3[mekey]
+                                del di3[mekey]
+                        del tmp_di['media']
+                        for _ in range(self._setting.maxRetryCount + 1):
+                            if not self._setting.downloadMediaFile or self._setting.sendFileURLScheme:
+                                re = self._request('sendAnimation', 'post', json=tmp_di)
+                            else:
+                                re = self._request(
+                                    'sendAnimation', 'post', json=tmp_di, files=tmp_di3)
+                            if re is not None and 'ok' in re and re['ok']:
+                                di['reply_to_message_id'] = re['result']['message_id']
+                                break
+                            sleep(5)
+                else:
                     for _ in range(self._setting.maxRetryCount + 1):
                         if not self._setting.downloadMediaFile or self._setting.sendFileURLScheme:
                             re = self._request('sendMediaGroup', 'post', json=di)
@@ -584,16 +679,49 @@ class main:
                                 di3 = {}
                                 break
                         sleep(5)
+                nonlocal contain_files
+                nonlocal contain_nonfiles
+                contain_files = False
+                contain_nonfiles = False
+
+            for i in content['imgList']:
+                if len(di['media']) == MAX_ITEM_IN_MEDIA_GROUP:
+                    send_file_in_list()
                 di2 = {'type': 'photo'}
                 if not self._setting.downloadMediaFile:
                     di2['media'] = i
+                    if contain_files:
+                        send_file_in_list()
+                    contain_nonfiles = True
                 else:
                     fileEntry = self._tempFileEntries.add(i, config)
                     if not fileEntry.ok:
                         return None
                     should_use_file = False if fileEntry._fileSize < MAX_PHOTO_SIZE and not config.send_img_as_file else True
+                    is_supported_photo = None
+                    if self._rssbotLib is not None:
+                        is_supported_photo = self._rssbotLib.is_supported_photo(fileEntry._abspath)
+                        if not should_use_file and is_supported_photo is not None:
+                            should_use_file = not is_supported_photo
                     if should_use_file:
+                        if contain_nonfiles:
+                            send_file_in_list()
+                        contain_files = True
                         di2['type'] = 'document'
+                        if is_supported_photo is False or (self._rssbotLib is not None and fileEntry._fileSize >= MAX_PHOTO_SIZE):
+                            if self._rssbotLib.convert_to_tg_thumbnail(fileEntry, 'jpeg'):
+                                thumb_file = fileEntry.getSubFile('_thumbnail', 'jpeg')
+                                if self._setting.sendFileURLScheme:
+                                    di2['thumb'] = thumb_file._localURI
+                                else:
+                                    thumb_file.open()
+                                    di2['thumb'] = f'attach://file{ind2}'
+                                    di3[f'file{ind2}'] = (thumb_file._fullfn, fileEntry._f)
+                                    ind2 += 1
+                    else:
+                        if contain_files:
+                            send_file_in_list()
+                        contain_nonfiles = True
                     if self._setting.sendFileURLScheme:
                         di2['media'] = fileEntry._localURI
                     else:
@@ -601,29 +729,14 @@ class main:
                         di2['media'] = f'attach://file{ind2}'
                         di3[f'file{ind2}'] = (fileEntry._fullfn, fileEntry._f)
                         ind2 = ind2 + 1
-                if ind % MAX_ITEM_IN_MEDIA_GROUP == 0:
+                if len(di['media']) == 0:
                     di2['caption'] = text.tostr(1024)
                     di2['parse_mode'] = 'HTML'
                 di['media'].append(di2)
                 ind = ind + 1
             for i in content['videoList']:
-                if ind % MAX_ITEM_IN_MEDIA_GROUP == 0 and ind != 0:
-                    for _ in range(self._setting.maxRetryCount + 1):
-                        if not self._setting.downloadMediaFile or self._setting.sendFileURLScheme:
-                            re = self._request('sendMediaGroup', 'post', json=di)
-                            if re is not None and 'ok' in re and re['ok']:
-                                di['reply_to_message_id'] = re['result']['message_id']
-                                di['media'] = []
-                                break
-                        else:
-                            re = self._request(
-                                'sendMediaGroup', 'post', json=di, files=di3)
-                            if re is not None and 'ok' in re and re['ok']:
-                                di['reply_to_message_id'] = re['result']['message_id']
-                                di['media'] = []
-                                di3 = {}
-                                break
-                        sleep(5)
+                if len(di['media']) == MAX_ITEM_IN_MEDIA_GROUP:
+                    send_file_in_list()
                 di2 = {'type': 'video', 'supports_streaming': True}
                 if not self._setting.downloadMediaFile:
                     di2['media'] = i['src']
@@ -638,6 +751,9 @@ class main:
                         di2['media'] = f'attach://file{ind2}'
                         di3[f'file{ind2}'] = (fileEntry._fullfn, fileEntry._f)
                         ind2 = ind2 + 1
+                if contain_files:
+                    send_file_in_list()
+                contain_nonfiles = True
                 if 'poster' in i and i['poster'] is not None and i['poster'] != '':
                     if not self._setting.downloadMediaFile:
                         di2['thumb'] = i['poster']
@@ -653,7 +769,7 @@ class main:
                             di3[f'file{ind2}'] = (
                                 fileEntry._fullfn, fileEntry._f)
                             ind2 = ind2 + 1
-                if ind % MAX_ITEM_IN_MEDIA_GROUP == 0:
+                if len(di['media']) == 0:
                     di2['caption'] = text.tostr(1024)
                     di2['parse_mode'] = 'HTML'
                 if self._rssbotLib is not None:
@@ -664,84 +780,8 @@ class main:
                         continue
                 di['media'].append(di2)
                 ind = ind + 1
-            if len(di['media']) > 1:
-                for _ in range(self._setting.maxRetryCount + 1):
-                    if not self._setting.downloadMediaFile or self._setting.sendFileURLScheme:
-                        re = self._request('sendMediaGroup', 'post', json=di)
-                    else:
-                        re = self._request(
-                            'sendMediaGroup', 'post', json=di, files=di3)
-                    if re is not None and 'ok' in re and re['ok']:
-                        break
-                    sleep(5)
-            if len(di['media']) == 1:
-                if 'caption' in di['media'][0]:
-                    di['caption'] = di['media'][0]['caption']
-                    di['parse_mode'] = 'HTML'
-                if di['media'][0]['type'] == 'photo':
-                    if not self._setting.downloadMediaFile or self._setting.sendFileURLScheme:
-                        di['photo'] = di['media'][0]['media']
-                    else:
-                        mekey = di['media'][0]['media'][9:]
-                        di3['photo'] = di3[mekey]
-                        del di3[mekey]
-                    del di['media']
-                    for _ in range(self._setting.maxRetryCount + 1):
-                        if not self._setting.downloadMediaFile or self._setting.sendFileURLScheme:
-                            re = self._request('sendPhoto', 'post', json=di)
-                        else:
-                            re = self._request(
-                                'sendPhoto', 'post', json=di, files=di3)
-                        if re is not None and 'ok' in re and re['ok']:
-                            break
-                        sleep(5)
-                elif di['media'][0]['type'] == 'video':
-                    if not self._setting.downloadMediaFile or self._setting.sendFileURLScheme:
-                        di['video'] = di['media'][0]['media']
-                        if 'thumb' in di['media'][0]:
-                            di['thumb'] = di['media'][0]['thumb']
-                    else:
-                        mekey = di['media'][0]['media'][9:]
-                        di3['video'] = di3[mekey]
-                        del di3[mekey]
-                        if 'thumb' in di['media'][0]:
-                            mekey = di['media'][0]['thumb'][9:]
-                            di3['thumb'] = di3[mekey]
-                            del di3[mekey]
-                    if 'duration' in di['media'][0]:
-                        di['duration'] = di['media'][0]['duration']
-                    if 'width' in di['media'][0]:
-                        di['width'] = di['media'][0]['width']
-                    if 'height' in di['media'][0]:
-                        di['height'] = di['media'][0]['height']
-                    di['supports_streaming'] = di['media'][0]['supports_streaming']
-                    del di['media']
-                    for _ in range(self._setting.maxRetryCount + 1):
-                        if not self._setting.downloadMediaFile or self._setting.sendFileURLScheme:
-                            re = self._request('sendVideo', 'post', json=di)
-                        else:
-                            re = self._request(
-                                'sendVideo', 'post', json=di, files=di3)
-                        if re is not None and 'ok' in re and re['ok']:
-                            break
-                        sleep(5)
-                elif di['media'][0]['type'] == 'document':
-                    if not self._setting.downloadMediaFile or self._setting.sendFileURLScheme:
-                        di['document'] = di['media'][0]['media']
-                    else:
-                        mekey = di['media'][0]['media'][9:]
-                        di3['document'] = di3[mekey]
-                        del di3[mekey]
-                    del di['media']
-                    for _ in range(self._setting.maxRetryCount + 1):
-                        if not self._setting.downloadMediaFile or self._setting.sendFileURLScheme:
-                            re = self._request('sendDocument', 'post', json=di)
-                        else:
-                            re = self._request(
-                                'sendDocument', 'post', json=di, files=di3)
-                        if re is not None and 'ok' in re and re['ok']:
-                            break
-                        sleep(5)
+            if len(di['media']) > 0:
+                send_file_in_list()
             if len(text) > 0:
                 di = {}
                 di['chat_id'] = chatId
