@@ -294,7 +294,7 @@ class main:
                                     re = self._request('sendPhoto', 'post', json=di)
                                 else:
                                     di['document'] = fileEntry._localURI
-                                    if is_supported_photo is False:
+                                    if is_supported_photo is False or (self._rssbotLib is not None and fileEntry._fileSize >= MAX_PHOTO_SIZE):
                                         if self._rssbotLib.convert_to_tg_thumbnail(fileEntry, 'jpeg'):
                                             thumb_file = fileEntry.getSubFile('_thumbnail', 'jpeg')
                                             di['thumb'] = thumb_file._localURI
@@ -306,7 +306,7 @@ class main:
                                                        'photo': (fileEntry._fullfn, fileEntry._f)})
                                 else:
                                     send_files = {'document': (fileEntry._fullfn, fileEntry._f)}
-                                    if is_supported_photo is False:
+                                    if is_supported_photo is False or (self._rssbotLib is not None and fileEntry._fileSize >= MAX_PHOTO_SIZE):
                                         if self._rssbotLib.convert_to_tg_thumbnail(fileEntry, 'jpeg'):
                                             thumb_file = fileEntry.getSubFile('_thumbnail', 'jpeg')
                                             thumb_file.open()
