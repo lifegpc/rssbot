@@ -78,6 +78,7 @@ def getMediaInfo(m: dict, config: RSSConfig = RSSConfig()) -> str:
     if have_rssbotlib:
         s += f"\n发送原始像素格式的Pixiv动图：{config.send_ugoira_with_origin_pix_fmt}"
         s += f'\n发送Pixiv动图为{config.send_ugoira_method}'
+        s += f"\n发送时压缩过大图片：{config.compress_big_image}"
     s += f"\nRSS全局设置："
     s += f"\n发送时使用原文件名：{config.send_origin_file_name}"
     return s
@@ -102,6 +103,7 @@ class InlineKeyBoardCallBack(Enum):
     SendOriginFileName = 14
     SendUgoiraWithOriginPixFmt = 15
     SendUgoiraMethod = 16
+    CompressBigImage = 17
 
 
 def getInlineKeyBoardWhenRSS(hashd: str, m: dict, isOwn: bool) -> dict:
@@ -173,6 +175,8 @@ def getInlineKeyBoardWhenRSS2(hashd: str, config: RSSConfig) -> str:
         temp2 = SendUgoiraMethod((config.send_ugoira_method.value + 1) % 4)
         temp = f'发送Pixiv动图为{temp2}'
         d[i].append({'text': temp, 'callback_data': f'0,{hashd},{InlineKeyBoardCallBack.SendUgoiraMethod.value},{temp2.value}'})
+        temp = f"{'禁用' if config.compress_big_image else '启用'}压缩过大图片"
+        d[i].append({'text': temp, 'callback_data': f'0,{hashd},{InlineKeyBoardCallBack.CompressBigImage.value}'})
     d.append([])
     i += 1
     d[i].append(
@@ -282,15 +286,31 @@ class main:
                                 content['imgList'][0], config)
                             if not fileEntry.ok:
                                 continue
-                            should_use_file = False if fileEntry._fileSize < MAX_PHOTO_SIZE and not config.send_img_as_file else True
+                            should_use_file = False if not config.send_img_as_file else True
                             is_supported_photo = None
+                            is_too_big = None
+                            compressed_file = None
                             if self._rssbotLib is not None:
-                                is_supported_photo = self._rssbotLib.is_supported_photo(fileEntry._abspath)
+                                ttmp = self._rssbotLib.is_supported_photo(fileEntry)
+                                if ttmp is not None:
+                                    is_supported_photo = ttmp[0]
+                                    is_too_big = ttmp[1]
                                 if not should_use_file and is_supported_photo is not None:
                                     should_use_file = not is_supported_photo
+                                    if is_too_big is True and config.compress_big_image:
+                                        compressed_file = self._rssbotLib.compress_image(fileEntry)
+                                        if compressed_file is not None:
+                                            should_use_file = False
+                                elif fileEntry._fileSize >= MAX_PHOTO_SIZE:
+                                    should_use_file = True
+                            elif fileEntry._fileSize >= MAX_PHOTO_SIZE:
+                                should_use_file = True
                             if self._setting.sendFileURLScheme:
                                 if not should_use_file:
-                                    di['photo'] = fileEntry._localURI
+                                    if compressed_file is None:
+                                        di['photo'] = fileEntry._localURI
+                                    else:
+                                        di['photo'] = compressed_file._localURI
                                     re = self._request('sendPhoto', 'post', json=di)
                                 else:
                                     di['document'] = fileEntry._localURI
@@ -300,10 +320,11 @@ class main:
                                             di['thumb'] = thumb_file._localURI
                                     re = self._request('sendDocument', 'post', json=di)
                             else:
-                                fileEntry.open()
+                                ttmp = fileEntry if compressed_file is None else compressed_file
+                                ttmp.open()
                                 if not should_use_file:
                                     re = self._request('sendPhoto', 'post', json=di, files={
-                                                       'photo': (fileEntry._fullfn, fileEntry._f)})
+                                                       'photo': (ttmp._fullfn, ttmp._f)})
                                 else:
                                     send_files = {'document': (fileEntry._fullfn, fileEntry._f)}
                                     if is_supported_photo is False or (self._rssbotLib is not None and fileEntry._fileSize >= MAX_PHOTO_SIZE):
@@ -697,12 +718,25 @@ class main:
                     fileEntry = self._tempFileEntries.add(i, config)
                     if not fileEntry.ok:
                         return None
-                    should_use_file = False if fileEntry._fileSize < MAX_PHOTO_SIZE and not config.send_img_as_file else True
+                    should_use_file = False if not config.send_img_as_file else True
                     is_supported_photo = None
+                    is_too_big = None
+                    compressed_file = None
                     if self._rssbotLib is not None:
-                        is_supported_photo = self._rssbotLib.is_supported_photo(fileEntry._abspath)
+                        ttmp = self._rssbotLib.is_supported_photo(fileEntry)
+                        if ttmp is not None:
+                            is_supported_photo = ttmp[0]
+                            is_too_big = ttmp[1]
                         if not should_use_file and is_supported_photo is not None:
                             should_use_file = not is_supported_photo
+                            if is_too_big is True and config.compress_big_image:
+                                compressed_file = self._rssbotLib.compress_image(fileEntry)
+                                if compressed_file is not None:
+                                    should_use_file = False
+                        elif fileEntry._fileSize >= MAX_PHOTO_SIZE:
+                            should_use_file = True
+                    elif fileEntry._fileSize >= MAX_PHOTO_SIZE:
+                        should_use_file = True
                     if should_use_file:
                         if contain_nonfiles:
                             send_file_in_list()
@@ -723,11 +757,15 @@ class main:
                             send_file_in_list()
                         contain_nonfiles = True
                     if self._setting.sendFileURLScheme:
-                        di2['media'] = fileEntry._localURI
+                        if compressed_file is None:
+                            di2['media'] = fileEntry._localURI
+                        else:
+                            di2['media'] = compressed_file._localURI
                     else:
-                        fileEntry.open()
+                        ttmp = fileEntry if compressed_file is None else compressed_file
+                        ttmp.open()
                         di2['media'] = f'attach://file{ind2}'
-                        di3[f'file{ind2}'] = (fileEntry._fullfn, fileEntry._f)
+                        di3[f'file{ind2}'] = (ttmp._fullfn, ttmp._f)
                         ind2 = ind2 + 1
                 if len(di['media']) == 0:
                     di2['caption'] = text.tostr(1024)
@@ -1479,7 +1517,7 @@ class callbackQueryHandle(Thread):
                 self._main._request("editMessageText", "post", json=di)
                 self.answer()
                 return
-            elif self._inlineKeyBoardCommand in [InlineKeyBoardCallBack.DisableWebPagePreview, InlineKeyBoardCallBack.ShowRSSTitle, InlineKeyBoardCallBack.ShowContentTitle, InlineKeyBoardCallBack.ShowContent, InlineKeyBoardCallBack.SendMedia, InlineKeyBoardCallBack.DisplayEntryLink, InlineKeyBoardCallBack.SendImgAsFile, InlineKeyBoardCallBack.SendUgoiraWithOriginPixFmt, InlineKeyBoardCallBack.SendUgoiraMethod]:
+            elif self._inlineKeyBoardCommand in [InlineKeyBoardCallBack.DisableWebPagePreview, InlineKeyBoardCallBack.ShowRSSTitle, InlineKeyBoardCallBack.ShowContentTitle, InlineKeyBoardCallBack.ShowContent, InlineKeyBoardCallBack.SendMedia, InlineKeyBoardCallBack.DisplayEntryLink, InlineKeyBoardCallBack.SendImgAsFile, InlineKeyBoardCallBack.SendUgoiraWithOriginPixFmt, InlineKeyBoardCallBack.SendUgoiraMethod, InlineKeyBoardCallBack.CompressBigImage]:
                 if self._inlineKeyBoardCommand == InlineKeyBoardCallBack.DisableWebPagePreview:
                     self._rssMeta.config.disable_web_page_preview = not self._rssMeta.config.disable_web_page_preview
                 elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.ShowRSSTitle:
@@ -1498,6 +1536,8 @@ class callbackQueryHandle(Thread):
                     self._rssMeta.config.send_ugoira_with_origin_pix_fmt = not self._rssMeta.config.send_ugoira_with_origin_pix_fmt
                 elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.SendUgoiraMethod:
                     self._rssMeta.config.send_ugoira_method = SendUgoiraMethod(int(self._inputList[3]))
+                elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.CompressBigImage:
+                    self._rssMeta.config.compress_big_image = not self._rssMeta.config.compress_big_image
                 di = {'chat_id': self._rssMeta.chatId,
                       'message_id': self._rssMeta.messageId}
                 di['text'] = getMediaInfo(
@@ -1684,7 +1724,7 @@ class callbackQueryHandle(Thread):
                 self._main._request("editMessageText", "post", json=di)
                 self.answer()
                 return
-            elif self._inlineKeyBoardForRSSListCommand in [InlineKeyBoardForRSSList.DisableWebPagePreview, InlineKeyBoardForRSSList.ShowRSSTitle, InlineKeyBoardForRSSList.ShowContentTitle, InlineKeyBoardForRSSList.ShowContent, InlineKeyBoardForRSSList.SendMedia, InlineKeyBoardForRSSList.DisplayEntryLink, InlineKeyBoardForRSSList.SendImgAsFile, InlineKeyBoardForRSSList.SendUgoiraWithOriginPixFmt, InlineKeyBoardForRSSList.SendUgoiraMethod]:
+            elif self._inlineKeyBoardForRSSListCommand in [InlineKeyBoardForRSSList.DisableWebPagePreview, InlineKeyBoardForRSSList.ShowRSSTitle, InlineKeyBoardForRSSList.ShowContentTitle, InlineKeyBoardForRSSList.ShowContent, InlineKeyBoardForRSSList.SendMedia, InlineKeyBoardForRSSList.DisplayEntryLink, InlineKeyBoardForRSSList.SendImgAsFile, InlineKeyBoardForRSSList.SendUgoiraWithOriginPixFmt, InlineKeyBoardForRSSList.SendUgoiraMethod, InlineKeyBoardForRSSList.CompressBigImage]:
                 di = {'chat_id': self._data['message']['chat']['id'],
                       'message_id': self._data['message']['message_id']}
                 rssList = self._main._db.getRSSListByChatId(chatId)
@@ -1715,6 +1755,8 @@ class callbackQueryHandle(Thread):
                     config.send_ugoira_with_origin_pix_fmt = not config.send_ugoira_with_origin_pix_fmt
                 elif self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.SendUgoiraMethod:
                     config.send_ugoira_method = SendUgoiraMethod(int(self._inputList[5]))
+                elif self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.CompressBigImage:
+                    config.compress_big_image = not config.compress_big_image
                 updated = self._main._db.updateChatConfig(chatEntry)
                 if updated:
                     self.answer('修改设置成功')

@@ -49,6 +49,7 @@ class InlineKeyBoardForRSSList(Enum):
     SendOriginFileName = 21
     SendUgoiraWithOriginPixFmt = 22
     SendUgoiraMethod = 23
+    CompressBigImage = 24
 
 
 def getTextContentForRSSInList(rssEntry: RSSEntry, s: settings) -> str:
@@ -83,6 +84,7 @@ def getTextContentForRSSInList(rssEntry: RSSEntry, s: settings) -> str:
         if have_rssbotlib:
             text += f'发送原始像素格式的Pixiv动图：{config.send_ugoira_with_origin_pix_fmt}'
             text += f'发送Pixiv动图为{config.send_ugoira_method}'
+            text += f"发送时压缩过大图片：{config.compress_big_image}"
         text += f"RSS全局设置："
         text += f"发送时使用原文件名：{config.send_origin_file_name}"
     return text.tostr()
@@ -219,6 +221,8 @@ def getInlineKeyBoardForRSSSettingsInList(chatId: int, rssEntry: RSSEntry, index
             temp2 = SendUgoiraMethod((config.send_ugoira_method.value + 1) % 4)
             temp = f'发送Pixiv动图为{temp2}'
             d[i].append({'text': temp, 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.SendUgoiraMethod.value},{index},{rssEntry.id},{temp2.value}'})
+            temp = f"{'禁用' if config.compress_big_image else '启用'}压缩过大图片"
+            d[i].append({'text': temp, 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.CompressBigImage.value},{index},{rssEntry.id}'})
     d.append([])
     i = i + 1
     d[i].append(

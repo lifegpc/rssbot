@@ -15,14 +15,14 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from enum import unique, Enum
 from traceback import print_exc
-from typing import Optional
+from typing import Optional, Tuple
 try:
-    from _rssbotlib import version, VideoInfo, convert_ugoira_to_mp4, AVDict, convert_to_tg_thumbnail
+    from _rssbotlib import version, VideoInfo, convert_ugoira_to_mp4, AVDict, convert_to_tg_thumbnail, tg_image_compress
     have_rssbotlib = True
 except ImportError:
     have_rssbotlib = False
 if have_rssbotlib:
-    from fileEntry import FileEntry, remove
+    from fileEntry import FileEntry, SubFileEntry, remove
 
 
 @unique
@@ -35,10 +35,11 @@ class AddVideoInfoResult(Enum):
 if have_rssbotlib:
     class RSSBotLib:
         def __init__(self, m):
-            from rssbot import main
+            from rssbot import main, MAX_PHOTO_SIZE
             self._main: main = m
+            self._max_photo_size = MAX_PHOTO_SIZE
             self._version = version()
-            if self._version is None or self._version > [1, 0, 0, 2]:
+            if self._version is None or self._version >= [1, 2, 0, 0] or self._version < [1, 1, 0, 0]:
                 raise ValueError('RSSBotLib Version unknown or not supported.')
 
         def addVideoInfo(self, url: str, data: dict, loc: str = None) -> AddVideoInfoResult:
@@ -113,10 +114,35 @@ if have_rssbotlib:
                     print_exc()
                 return False
 
-        def is_supported_photo(self, f: str) -> Optional[bool]:
+        def compress_image(self, f: FileEntry, format: str = 'jpeg', max_len: int = 1920, force_yuv420p: bool = True) -> Optional[SubFileEntry]:
+            try:
+                na = f'_compressed_{max_len}' if force_yuv420p else f'_compressed_origin_{max_len}'
+                if f.getSubFile(na, format) is not None:
+                    return f.getSubFile(na, format)
+                dst = f.getSubPath(na, format)
+                opt = AVDict()
+                if not force_yuv420p:
+                    opt['force_yuv420p'] = '0'
+                if not tg_image_compress(f._abspath, dst, format, max_len, opt):
+                    return None
+                f.addSubFile(na, format)
+                return f.getSubFile(na, format)
+            except Exception:
+                print_exc()
+                try:
+                    remove(dst)
+                except Exception:
+                    print_exc()
+                return None
+
+        def is_supported_photo(self, f: FileEntry) -> Optional[Tuple[bool, bool]]:
+            """
+            第一个返回是否符合TG图片的要求
+            第二个返回图片解析度过大时返回True
+            """
             try:
                 v = VideoInfo()
-                if not v.parse(f):
+                if not v.parse(f._abspath):
                     return None
                 streams = v.streams
                 width = None
@@ -128,7 +154,12 @@ if have_rssbotlib:
                         break
                 if width is None or height is None:
                     return None
-                return False if width + height > 10000 or width / height > 20 or height / width > 20 else True
+                if width / height >= 20 or height / width >= 20:
+                    return False, False
+                elif width + height >= 10000 or f._fileSize >= self._max_photo_size:
+                    return False, True
+                else:
+                    return True, False
             except Exception:
                 print_exc()
                 return None
