@@ -320,6 +320,27 @@ class database:
                 li.append(BlackInfo(i[0], i[1], i[2], i[3], i[4]))
             return li
 
+    def getChatCount(self) -> int:
+        with self._value_lock:
+            cur = self._db.execute('SELECT COUNT(DISTINCT chatId) FROM chatList;')
+            for i in cur:
+                return i[0]
+            return None
+
+    def getChatRSSCount(self) -> int:
+        with self._value_lock:
+            cur = self._db.execute('SELECT COUNT(*) FROM chatList;')
+            for i in cur:
+                return i[0]
+            return None
+
+    def getHashCount(self) -> int:
+        with self._value_lock:
+            cur = self._db.execute('SELECT COUNT(*) FROM hashList;')
+            for i in cur:
+                return i[0]
+            return None
+
     def getRSSByIdAndChatId(self, id: int, chatId: int) -> RSSEntry:
         while self._value_lock:
             cur = self._db.execute('SELECT RSSList.title, RSSList.url, RSSList.interval, RSSList.lastupdatetime, RSSList.id, RSSList.lasterrortime, RSSList.forceupdate, RSSList.errorcount, RSSList.settings, chatList.config FROM chatList INNER JOIN RSSList ON RSSList.id = chatList.id WHERE chatList.chatId = ? AND chatlist.id = ?;', (chatId, id))
@@ -327,6 +348,13 @@ class database:
                 rss = RSSEntry(i, self._main._setting.maxCount)
                 rss.chatList.append(ChatEntry((chatId, i[4], i[9]), rss._settings))
                 return rss
+            return None
+
+    def getRSSCount(self) -> int:
+        with self._value_lock:
+            cur = self._db.execute('SELECT COUNT(*) FROM RSSList;')
+            for i in cur:
+                return i[0]
             return None
 
     def getRSSListByChatId(self, chatId: int) -> List[RSSEntry]:
@@ -348,6 +376,13 @@ class database:
                     return i[0]
             except Exception:
                 return None
+
+    def getUserBlackListCount(self) -> int:
+        with self._value_lock:
+            cur = self._db.execute('SELECT COUNT(*) FROM userBlackList;')
+            for i in cur:
+                return i[0]
+            return None
 
     def getUserStatus(self, userId: int) -> Tuple[userStatus, str]:
         with self._value_lock:

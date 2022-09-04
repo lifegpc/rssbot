@@ -1164,7 +1164,7 @@ class messageHandle(Thread):
                     return
         if self._botCommand is None and self._data['chat']['type'] in ['group', 'supergroup']:
             return
-        if self._botCommand is None or self._botCommand not in ['/help', '/rss', '/rsslist', '/ban', '/banlist', '/unban']:
+        if self._botCommand is None or self._botCommand not in ['/help', '/rss', '/rsslist', '/ban', '/banlist', '/unban', '/status']:
             self._botCommand = '/help'
         di = {'chat_id': self._chatId}
         if self.__getChatType() in ['supergroup', 'group'] and self._fromUserId is not None:
@@ -1175,7 +1175,8 @@ class messageHandle(Thread):
 /rsslist [chatId]   获取RSS订阅列表
 /ban        封禁某用户
 /banlist    查询被封禁列表
-/unban      取消封禁某用户'''
+/unban      取消封禁某用户
+/status     返回Bot状态'''
         elif self._botCommand == '/rss':
             self._botCommandPara = self._getCommandlinePara()
             self._uri = None
@@ -1296,6 +1297,19 @@ class messageHandle(Thread):
                         else:
                             di['text'] = f'封禁<a href="{link}">{title}</a>失败！'
                         di['parse_mode'] = 'HTML'
+        elif self._botCommand == '/status':
+            if self._fromUserId is None or not self._main._setting.botOwnerList.isOwner(self._fromUserId):
+                di['text'] = '❌你没有权限操作，请与Bot主人进行PY交易以获得权限。'
+            else:
+                di['text'] = f'''Bot状态：
+RSSBotLib版本: {('<code>' + '.'.join(str(i) for i in self._main._rssbotLib._version) + '</code>') if self._main._rssbotLib is not None else '未发现RSSBotLib'}
+数据库版本: <code>{'.'.join(str(i) for i in self._main._db._version)}</code>
+RSS地址总数: <code>{self._main._db.getRSSCount()}</code>
+RSS订阅总数: <code>{self._main._db.getChatRSSCount()}</code>
+用户(含频道、群组)数: <code>{self._main._db.getChatCount()}</code>
+内容散列个数: <code>{self._main._db.getHashCount()}</code>
+黑名单(不含配置文件)总数: <code>{self._main._db.getUserBlackListCount()}</code>'''
+                di['parse_mode'] = 'HTML'
         re = self._main._request('sendMessage', 'post', json=di)
         if self._botCommand == '/rss' and self._uri is not None and re is not None and 'ok' in re and re['ok']:
             re = re['result']
