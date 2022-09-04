@@ -68,6 +68,12 @@ reason TEXT,
 name TEXT,
 PRIMARY KEY (userId)
 )'''
+CHATNAMECACHE_TABLE = '''CREATE TABLE chatNameCache (
+id INT,
+name TEXT,
+time INT,
+PRIMARY KEY (id)
+)'''
 
 
 @unique
@@ -142,6 +148,9 @@ class database:
             if v < [1, 0, 0, 8]:
                 self._db.execute('ALTER TABLE RSSList ADD settings TEXT;')
                 self._db.commit()
+            if v < [1, 0, 0, 9]:
+                self._db.execute(CHATNAMECACHE_TABLE)
+                self._db.commit()
             self._db.execute('VACUUM;')
             self.__updateExistsTable()
             self.__write_version()
@@ -161,10 +170,12 @@ class database:
             self._db.execute(HASHLIST_TABLE)
         if 'userBlackList' not in self._exist_tables:
             self._db.execute(USERBLACKLIST_TABLE)
+        if 'chatNameCache' not in self._exist_tables:
+            self._db.execute(CHATNAMECACHE_TABLE)
         self._db.commit()
 
     def __init__(self, m, loc: str):
-        self._version = [1, 0, 0, 8]
+        self._version = [1, 0, 0, 9]
         self._value_lock = Lock()
         self._db = sqlite3.connect(loc, check_same_thread=False)
         self._db.execute('VACUUM;')
@@ -327,6 +338,13 @@ class database:
                 return i[0]
             return None
 
+    def getChatName(self, chat_id: int, maxCacheTime: int = 3600) -> Optional[str]:
+        with self._value_lock:
+            cur = self._db.execute('SELECT name FROM chatNameCache WHERE id = ? AND time > ?;', (chat_id, round(time()) - maxCacheTime))
+            for i in cur:
+                return i[0]
+            return None
+
     def getChatRSSCount(self) -> int:
         with self._value_lock:
             cur = self._db.execute('SELECT COUNT(*) FROM chatList;')
@@ -340,6 +358,14 @@ class database:
             for i in cur:
                 return i[0]
             return None
+
+    def getRSSList(self) -> Optional[List[RSSEntry]]:
+        with self._value_lock:
+            cur = self._db.execute(f'SELECT * FROM RSSList;')
+            r = []
+            for i in cur:
+                r.append(RSSEntry(i, self._main._setting.maxCount))
+            return r
 
     def getRSSByIdAndChatId(self, id: int, chatId: int) -> RSSEntry:
         while self._value_lock:
@@ -419,6 +445,15 @@ class database:
                 self._db.execute(
                     f"DELETE FROM chatList WHERE chatId=? AND id=?;",
                     (chatId, id))
+                self._db.commit()
+                return True
+            except:
+                return False
+
+    def saveChatName(self, chatId: int, name: str) -> bool:
+        with self._value_lock:
+            try:
+                self._db.execute('INSERT OR REPLACE INTO chatNameCache VALUES (?, ?, ?);', (chatId, name, round(time())))
                 self._db.commit()
                 return True
             except:

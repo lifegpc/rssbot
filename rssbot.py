@@ -42,6 +42,7 @@ from miraiDatabase import MiraiDatabase
 from mirai import Mirai
 from blackList import BlackList, InlineKeyBoardForBlackList, getInlineKeyBoardForBlackList, getTextContentForBlackInfo, getInlineKeyBoardForBlackInfo, getTextContentForUnbanBlackInfo, getInlineKeyBoardForUnbanBlackInfo, BlackInfo
 from json import loads
+from manage import getInlineKeyBoardForManage, InlineKeyBoardForManage
 
 
 MAX_ITEM_IN_MEDIA_GROUP = 10
@@ -856,6 +857,34 @@ class main:
             return False, ''
         return False
 
+    def getChatName(self, chatId: int) -> str:
+        name = self._db.getChatName(chatId)
+        if name is not None:
+            return name
+        re = self._request('getChat', 'post', {'chat_id': chatId})
+        if re is not None and 'ok' in re and re['ok']:
+            name = None
+            re = re['result']
+            type = re['type']
+            if type == 'private':
+                name = re['first_name']
+                if 'last_name' in re:
+                    name = name + ' ' + re['last_name']
+                if 'username' in re:
+                    name = name + '(@' + re['username'] + ')'
+            else:
+                name = re['title']
+                if 'username' in re:
+                    name = name + '(@' + re['username'] + ')'
+            if name is not None:
+                self._db.saveChatName(chatId, name)
+            else:
+                name = str(chatId)
+            return name
+        else:
+            print(re)
+            return str(chatId)
+
     def _updateLoop(self):
         d = {'allowed_updates': ['message', 'edited_message',
                                  'channel_post', 'edited_channel_post', 'callback_query']}
@@ -1164,7 +1193,7 @@ class messageHandle(Thread):
                     return
         if self._botCommand is None and self._data['chat']['type'] in ['group', 'supergroup']:
             return
-        if self._botCommand is None or self._botCommand not in ['/help', '/rss', '/rsslist', '/ban', '/banlist', '/unban', '/status']:
+        if self._botCommand is None or self._botCommand not in ['/help', '/rss', '/rsslist', '/ban', '/banlist', '/unban', '/status', '/manage']:
             self._botCommand = '/help'
         di = {'chat_id': self._chatId}
         if self.__getChatType() in ['supergroup', 'group'] and self._fromUserId is not None:
@@ -1176,7 +1205,8 @@ class messageHandle(Thread):
 /ban        封禁某用户
 /banlist    查询被封禁列表
 /unban      取消封禁某用户
-/status     返回Bot状态'''
+/status     返回Bot状态
+/manage     管理所有RSS订阅'''
         elif self._botCommand == '/rss':
             self._botCommandPara = self._getCommandlinePara()
             self._uri = None
@@ -1310,6 +1340,12 @@ RSS订阅总数: <code>{self._main._db.getChatRSSCount()}</code>
 内容散列个数: <code>{self._main._db.getHashCount()}</code>
 黑名单(不含配置文件)总数: <code>{self._main._db.getUserBlackListCount()}</code>'''
                 di['parse_mode'] = 'HTML'
+        elif self._botCommand == '/manage':
+            if self._fromUserId is None or not self._main._setting.botOwnerList.isOwner(self._fromUserId):
+                di['text'] = '❌你没有权限操作，请与Bot主人进行PY交易以获得权限。'
+            else:
+                di['text'] = '请选择管理模式：'
+                di['reply_markup'] = getInlineKeyBoardForManage()
         re = self._main._request('sendMessage', 'post', json=di)
         if self._botCommand == '/rss' and self._uri is not None and re is not None and 'ok' in re and re['ok']:
             re = re['result']
@@ -1951,9 +1987,37 @@ class callbackQueryHandle(Thread):
                 di['reply_markup'] = getInlineKeyBoardForBlackList(self._main._blackList.getBlackList(), itemIndex=int(self._inputList[2]))
                 self._main._request("editMessageText", "post", json=di)
                 return
+        elif self._loc == 3:
+            if 'message' not in self._data:
+                self.answer('找不到信息。')
+                return
+            if self._fromUserId is None or not self._isOwn:
+                self.answer('❌你没有权限操作，请与Bot主人进行PY交易以获得权限。')
+                return
+            try:
+                self._inlineKeyBoardForManageCommand = InlineKeyBoardForManage(int(self._inputList[1]))
+            except Exception:
+                self.answer('未知的按钮。')
+                return
+            di = {'chat_id': self._data['message']['chat']['id'],
+                  'message_id': self._data['message']['message_id']}
+            if self._inlineKeyBoardForManageCommand == InlineKeyBoardForManage.Close:
+                self._main._request("deleteMessage", "post", json=di)
+                return
+            elif self._inlineKeyBoardForManageCommand in [InlineKeyBoardForManage.ManageByRSS, InlineKeyBoardForManage.ManageByChatId]:
+                innerCommand = None
+                if len(self._inputList) > 2:
+                    try:
+                        innerCommand = InlineKeyBoardForManage(int(self._inputList[2]))
+                    except Exception:
+                        self.answer('未知的按钮。')
+                        return
+                if innerCommand is None or innerCommand == InlineKeyBoardForManage.FirstPage:
+                    pass
         else:
             self.answer('未知的按钮。')
             return
+        self.answer('未知的按钮。')
 
 
 if __name__ == "__main__":
