@@ -42,7 +42,7 @@ from miraiDatabase import MiraiDatabase
 from mirai import Mirai
 from blackList import BlackList, InlineKeyBoardForBlackList, getInlineKeyBoardForBlackList, getTextContentForBlackInfo, getInlineKeyBoardForBlackInfo, getTextContentForUnbanBlackInfo, getInlineKeyBoardForUnbanBlackInfo, BlackInfo
 from json import loads
-from manage import getInlineKeyBoardForManage, InlineKeyBoardForManage
+from manage import getInlineKeyBoardForManage, InlineKeyBoardForManage, getInlineKeyBoardForManageRSSList, getInlineKeyBoardForManageChatList, getTextContentForRSSInManageList, getInlineKeyBoardForRSSInManageList
 
 
 MAX_ITEM_IN_MEDIA_GROUP = 10
@@ -2006,14 +2006,124 @@ class callbackQueryHandle(Thread):
                 return
             elif self._inlineKeyBoardForManageCommand in [InlineKeyBoardForManage.ManageByRSS, InlineKeyBoardForManage.ManageByChatId]:
                 innerCommand = None
+                is_rss_manage = False
+                rssManageCommand = None
+                rssManageChatIndex = None
+                rssManageChatId = None
+                rssManageRSSId = None
+                rssManageIndex = None
+                rssManageSubList = None
                 if len(self._inputList) > 2:
                     try:
                         innerCommand = InlineKeyBoardForManage(int(self._inputList[2]))
                     except Exception:
                         self.answer('未知的按钮。')
                         return
-                if innerCommand is None or innerCommand == InlineKeyBoardForManage.FirstPage:
-                    pass
+                if innerCommand is None or innerCommand in [InlineKeyBoardForManage.FirstPage, InlineKeyBoardForManage.LastPage, InlineKeyBoardForManage.NextPage, InlineKeyBoardForManage.PrevPage, InlineKeyBoardForManage.BackToList]:
+                    page = 1
+                    lastPage = False
+                    itemIndex = None
+                    if innerCommand == InlineKeyBoardForManage.LastPage:
+                        lastPage = True
+                    elif innerCommand == InlineKeyBoardForManage.NextPage:
+                        page = int(self._inputList[3]) + 1
+                    elif innerCommand == InlineKeyBoardForManage.PrevPage:
+                        page = int(self._inputList[3]) - 1
+                    elif innerCommand == InlineKeyBoardForManage.BackToList:
+                        itemIndex = int(self._inputList[3])
+                    if self._inlineKeyBoardForManageCommand == InlineKeyBoardForManage.ManageByRSS:
+                        rssList = self._main._db.getRSSList()
+                        di['text'] = '列表如下：'
+                        di['reply_markup'] = getInlineKeyBoardForManageRSSList(rssList, page, lastPage, itemIndex)
+                        self._main._request("editMessageText", "post", json=di)
+                        return
+                    else:
+                        chatList = self._main._db.getChatIdList()
+                        di['text'] = '列表如下：'
+                        di['reply_markup'] = getInlineKeyBoardForManageChatList(self._main, chatList, page, lastPage, itemIndex)
+                        self._main._request("editMessageText", "post", json=di)
+                        return
+                elif innerCommand == InlineKeyBoardForManage.ChatManage:
+                    innerCommand2 = None
+                    try:
+                        index = max(int(self._inputList[3]), 0)
+                        chat_id = int(self._inputList[4])
+                    except Exception:
+                        self.answer('未知的按钮。')
+                        return
+                    if len(self._inputList) > 5:
+                        try:
+                            innerCommand2 = InlineKeyBoardForManage(int(self._inputList[5]))
+                        except Exception:
+                            self.answer('未知的按钮。')
+                            return
+                    if innerCommand2 is None or innerCommand2 in [InlineKeyBoardForManage.FirstPage, InlineKeyBoardForManage.LastPage, InlineKeyBoardForManage.NextPage, InlineKeyBoardForManage.PrevPage, InlineKeyBoardForManage.BackToList]:
+                        page = 1
+                        lastPage = False
+                        itemIndex = None
+                        if innerCommand2 == InlineKeyBoardForManage.LastPage:
+                            lastPage = True
+                        elif innerCommand2 == InlineKeyBoardForManage.NextPage:
+                            page = int(self._inputList[6]) + 1
+                        elif innerCommand2 == InlineKeyBoardForManage.PrevPage:
+                            page = int(self._inputList[6]) - 1
+                        elif innerCommand2 == InlineKeyBoardForManage.BackToList:
+                            itemIndex = int(self._inputList[6])
+                        rssList = self._main._db.getRSSListByChatId(chat_id)
+                        di['text'] = '列表如下：'
+                        di['reply_markup'] = getInlineKeyBoardForManageRSSList(rssList, page, lastPage, itemIndex, base=f"3,{InlineKeyBoardForManage.ManageByChatId.value},{InlineKeyBoardForManage.ChatManage.value},{index},{chat_id}", back=f"3,{InlineKeyBoardForManage.ManageByChatId.value},{InlineKeyBoardForManage.BackToList.value},{index}")
+                        self._main._request("editMessageText", "post", json=di)
+                        return
+                    elif innerCommand2 == InlineKeyBoardForManage.RSSManage:
+                        try:
+                            rssManageIndex = int(self._inputList[6])
+                            rssManageRSSId = int(self._inputList[7])
+                        except Exception:
+                            self.answer('未知的按钮。')
+                            return
+                        rssManageChatId = chat_id
+                        rssManageChatIndex = index
+                        if len(self._inputList) > 8:
+                            try:
+                                rssManageCommand = InlineKeyBoardForManage(int(self._inputList[8]))
+                            except Exception:
+                                self.answer('未知的按钮。')
+                                return
+                        if len(self._inputList) > 9:
+                            rssManageSubList = self._inputList[9:]
+                        is_rss_manage = True
+                elif innerCommand == InlineKeyBoardForManage.RSSManage:
+                    is_rss_manage = True
+                    try:
+                        rssManageIndex = int(self._inputList[3])
+                        rssManageRSSId = int(self._inputList[4])
+                    except:
+                        self.answer('未知的按钮。')
+                        return
+                    if len(self._inputList) > 5:
+                        try:
+                            rssManageCommand = InlineKeyBoardForManage(int(self._inputList[5]))
+                        except Exception:
+                            self.answer('未知的按钮。')
+                            return
+                    if len(self._inputList) > 6:
+                        rssManageSubList = self._inputList[6:]
+                if is_rss_manage:
+                    if rssManageChatId is not None:
+                        rssEntry = self._main._db.getRSSByIdAndChatId(rssManageRSSId, rssManageChatId)
+                    else:
+                        pass
+                    if rssManageCommand is None:
+                        di['text'] = getTextContentForRSSInManageList(self._main, rssEntry, self._main._setting, rssManageChatId)
+                        di['parse_mode'] = 'HTML'
+                        di['reply_markup'] = getInlineKeyBoardForRSSInManageList(rssEntry, rssManageIndex, rssManageChatId, rssManageChatIndex)
+                        self._main._request("editMessageText", "post", json=di)
+                        return
+            elif self._inlineKeyBoardForManageCommand == InlineKeyBoardForManage.ManageMenu:
+                di['text'] = '请选择管理模式：'
+                di['reply_markup'] = getInlineKeyBoardForManage()
+                self._main._request("editMessageText", "post", json=di)
+                return
         else:
             self.answer('未知的按钮。')
             return

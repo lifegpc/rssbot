@@ -338,6 +338,14 @@ class database:
                 return i[0]
             return None
 
+    def getChatIdList(self) -> int:
+        with self._value_lock:
+            cur = self._db.execute('SELECT DISTINCT chatId FROM chatList;')
+            r = []
+            for i in cur:
+                r.append(i[0])
+            return r
+
     def getChatName(self, chat_id: int, maxCacheTime: int = 3600) -> Optional[str]:
         with self._value_lock:
             cur = self._db.execute('SELECT name FROM chatNameCache WHERE id = ? AND time > ?;', (chat_id, round(time()) - maxCacheTime))
@@ -360,6 +368,7 @@ class database:
             return None
 
     def getRSSList(self) -> Optional[List[RSSEntry]]:
+        '''返回不带chatList和hashList的RSS列表'''
         with self._value_lock:
             cur = self._db.execute(f'SELECT * FROM RSSList;')
             r = []
