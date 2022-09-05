@@ -224,6 +224,8 @@ class main:
             return self.__sendMessage(chatId, meta, content, config, returnError, testMessage)
 
     def __sendMessage(self, chatId: int, meta: dict, content: dict, config: RSSConfig, returnError: bool = False, testMessage: bool = False):
+        # TODO: 文件下载返回>=400错误支持可以发送剩余消息
+        # TODO: 新增文件层面的重试机制
         di = {}
         di['chat_id'] = chatId
         text = textc()
