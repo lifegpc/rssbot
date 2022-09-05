@@ -123,8 +123,10 @@ class FileEntry:
                         if chunk:
                             f.write(chunk)
             self.ok = self._r.ok
+            self.connect_error = False
         except:
             self.ok = False
+            self.connect_error = True
         self._fileExist = True if exists(self._abspath) else False
         if not self._fileExist:
             self._fileSize = 0
@@ -209,7 +211,9 @@ class FileEntries:
         if fileEntry.ok and fileEntry._fileExist:
             self.__list.append(fileEntry)
             return fileEntry
-        return None
+        elif not fileEntry.connect_error:
+            self.__list.append(fileEntry)
+        return fileEntry
 
     def clear(self):
         with self._value_lock:
