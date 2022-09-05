@@ -42,7 +42,7 @@ from miraiDatabase import MiraiDatabase
 from mirai import Mirai
 from blackList import BlackList, InlineKeyBoardForBlackList, getInlineKeyBoardForBlackList, getTextContentForBlackInfo, getInlineKeyBoardForBlackInfo, getTextContentForUnbanBlackInfo, getInlineKeyBoardForUnbanBlackInfo, BlackInfo
 from json import loads
-from manage import getInlineKeyBoardForManage, InlineKeyBoardForManage, getInlineKeyBoardForManageRSSList, getInlineKeyBoardForManageChatList, getTextContentForRSSInManageList, getInlineKeyBoardForRSSInManageList
+from manage import getInlineKeyBoardForManage, InlineKeyBoardForManage, getInlineKeyBoardForManageRSSList, getInlineKeyBoardForManageChatList, getTextContentForRSSInManageList, getInlineKeyBoardForRSSInManageList, getInlineKeyBoardForRSSUnsubscribeInManageList
 
 
 MAX_ITEM_IN_MEDIA_GROUP = 10
@@ -2114,11 +2114,17 @@ class callbackQueryHandle(Thread):
                     if rssManageChatId is not None:
                         rssEntry = self._main._db.getRSSByIdAndChatId(rssManageRSSId, rssManageChatId)
                     else:
-                        pass
+                        rssEntry = self._main._db.getRSSById(rssManageRSSId)
                     if rssManageCommand is None:
                         di['text'] = getTextContentForRSSInManageList(self._main, rssEntry, self._main._setting, rssManageChatId)
                         di['parse_mode'] = 'HTML'
                         di['reply_markup'] = getInlineKeyBoardForRSSInManageList(rssEntry, rssManageIndex, rssManageChatId, rssManageChatIndex)
+                        self._main._request("editMessageText", "post", json=di)
+                        return
+                    elif rssManageCommand == InlineKeyBoardForManage.Unsubscribe:
+                        di['text'] = getTextContentForRSSUnsubscribeInList(rssEntry)
+                        di['parse_mode'] = 'HTML'
+                        di['reply_markup'] = getInlineKeyBoardForRSSUnsubscribeInManageList(rssEntry, rssManageIndex, rssManageChatId, rssManageChatIndex)
                         self._main._request("editMessageText", "post", json=di)
                         return
             elif self._inlineKeyBoardForManageCommand == InlineKeyBoardForManage.ManageMenu:

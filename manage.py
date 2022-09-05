@@ -17,6 +17,7 @@ from enum import Enum, unique
 from html import escape
 from math import ceil, floor
 from typing import List
+from config import RSSConfig
 from readset import settings
 from rssbotlib import have_rssbotlib
 from RSSEntry import ChatEntry, RSSEntry
@@ -36,6 +37,8 @@ class InlineKeyBoardForManage(Enum):
     RSSManage = 8
     ChatManage = 9
     BackToList = 10
+    Unsubscribe = 11
+    ConfirmUnsubscribe = 12
 
 
 def getInlineKeyBoardForManage():
@@ -156,7 +159,7 @@ def getTextContentForRSSInManageList(m, rssEntry: RSSEntry, s: settings, chatId:
         chatName = m.getChatName(chatId)
         temp = chatName if chatId < 0 else f'<a href="tg://user?id={chatId}">{escape(chatName)}</a>'
         text.addtotext(f'订阅用户：{temp}')
-    if len(rssEntry.chatList) > 0:
+    if len(rssEntry.chatList) > 0 and chatId is not None:
         chatEntry: ChatEntry = rssEntry.chatList[0]
         config = chatEntry.config
         text.addtotext("设置：")
@@ -173,6 +176,10 @@ def getTextContentForRSSInManageList(m, rssEntry: RSSEntry, s: settings, chatId:
             text += f"发送时压缩过大图片：{config.compress_big_image}"
         text += f"RSS全局设置："
         text += f"发送时使用原文件名：{config.send_origin_file_name}"
+    else:
+        global_config = RSSConfig(rssEntry._settings)
+        text += f"RSS全局设置："
+        text += f"发送时使用原文件名：{global_config.send_origin_file_name}"
     return text.tostr()
 
 
@@ -182,5 +189,20 @@ def getInlineKeyBoardForRSSInManageList(rss: RSSEntry, index: int, chatId: int =
     d.append([])
     i += 1
     have_chat_id = chatId is not None and chatIndex is not None
+    if have_chat_id:
+        d[i].append({'text': '取消订阅', 'callback_data': f'3,{InlineKeyBoardForManage.ManageByChatId.value},{InlineKeyBoardForManage.ChatManage.value},{chatIndex},{chatId},{InlineKeyBoardForManage.RSSManage.value},{index},{rss.id},{InlineKeyBoardForManage.Unsubscribe.value}'})
+    d.append([])
+    i += 1
     d[i].append({'text': '返回', 'callback_data': (f'3,{InlineKeyBoardForManage.ManageByChatId.value},{InlineKeyBoardForManage.ChatManage.value},{chatIndex},{chatId}' if have_chat_id else f'3,{InlineKeyBoardForManage.ManageByRSS.value}') + f',{InlineKeyBoardForManage.BackToList.value},{index}' })
+    return {'inline_keyboard': d}
+
+
+def getInlineKeyBoardForRSSUnsubscribeInManageList(rss: RSSEntry, index: int, chatId: int, chatIndex: int):
+    d = []
+    i = -1
+    d.append([])
+    i += 1
+    base = f'3,{InlineKeyBoardForManage.ManageByChatId.value},{InlineKeyBoardForManage.ChatManage.value},{chatIndex},{chatId},{InlineKeyBoardForManage.RSSManage.value},{index},{rss.id}'
+    d[i].append({'text': '是', 'callback_data': f'{base},{InlineKeyBoardForManage.ConfirmUnsubscribe.value}'})
+    d[i].append({'text': '否', 'callback_data': base})
     return {'inline_keyboard': d}

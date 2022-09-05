@@ -376,6 +376,13 @@ class database:
                 r.append(RSSEntry(i, self._main._setting.maxCount))
             return r
 
+    def getRSSById(self, id: int) -> Optional[RSSEntry]:
+        with self._value_lock:
+            cur = self._db.execute(f'SELECT * FROM RSSList WHERE id = ?;', (id,))
+            for i in cur:
+                return RSSEntry(i, self._main._setting.maxCount)
+            return None
+
     def getRSSByIdAndChatId(self, id: int, chatId: int) -> RSSEntry:
         while self._value_lock:
             cur = self._db.execute('SELECT RSSList.title, RSSList.url, RSSList.interval, RSSList.lastupdatetime, RSSList.id, RSSList.lasterrortime, RSSList.forceupdate, RSSList.errorcount, RSSList.settings, chatList.config FROM chatList INNER JOIN RSSList ON RSSList.id = chatList.id WHERE chatList.chatId = ? AND chatlist.id = ?;', (chatId, id))
