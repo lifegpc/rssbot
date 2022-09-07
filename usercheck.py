@@ -45,7 +45,5 @@ def checkUserPermissionsInChat(m, chatId: int, userId: int) -> UserPermissionsIn
             continue
         if chatInfo['type'] == 'channel' and chatMember['status'] == 'administrator' and ('can_post_messages' not in chatMember or not chatMember['can_post_messages']):
             continue
-        if chatInfo['type'] == 'channel' and chatMember['status'] == 'administrator' and ('can_edit_messages' not in chatMember or not chatMember['can_edit_messages']):
-            continue
         return UserPermissionsInChatCheckResult.OK
     return UserPermissionsInChatCheckResult.NoPermissions
