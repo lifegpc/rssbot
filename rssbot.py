@@ -1142,7 +1142,7 @@ class messageHandle(Thread):
                                                           "chat_id": chatId, "user_id": self._main._me['id']})
                                 if re4 is not None and 'ok' in re4 and re4['ok']:
                                     re4 = re4['result']
-                                    if re2['type'] == 'channel' and (re4['status'] not in ['creator', 'administrator'] or not re4['can_post_messages']:
+                                    if re2['type'] == 'channel' and (re4['status'] not in ['creator', 'administrator'] or not re4['can_post_messages']):
                                         di['text'] = '机器人在频道内缺少必要的权限'
                                         self._main._request(
                                             'editMessageText', 'post', json=di)
