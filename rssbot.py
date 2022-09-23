@@ -288,7 +288,10 @@ class main:
                             fileEntry = self._tempFileEntries.add(
                                 content['imgList'][0], config)
                             if not fileEntry.ok:
-                                continue
+                                if fileEntry.connect_error:
+                                    continue
+                                else:
+                                    break
                             should_use_file = False if not config.send_img_as_file else True
                             is_supported_photo = None
                             is_too_big = None
@@ -376,7 +379,10 @@ class main:
                             fileEntry = self._tempFileEntries.add(
                                 content['videoList'][0]['src'], config)
                             if not fileEntry.ok:
-                                continue
+                                if fileEntry.connect_error:
+                                    continue
+                                else:
+                                    break
                             if self._setting.sendFileURLScheme:
                                 di['video'] = fileEntry._localURI
                             else:
@@ -390,7 +396,10 @@ class main:
                                 fileEntry = self._tempFileEntries.add(
                                     content['videoList'][0]['poster'], config)
                                 if not fileEntry.ok:
-                                    continue
+                                    if fileEntry.connect_error:
+                                        continue
+                                    else:
+                                        break
                                 if self._setting.sendFileURLScheme:
                                     di['thumb'] = fileEntry._localURI
                                 else:
@@ -482,6 +491,8 @@ class main:
                                     fileEntry._fullfn, fileEntry._f)
                             z = self._tempFileEntries.add(content['ugoiraList'][0]['src'], config)
                             force_yuv420p = not config.send_ugoira_with_origin_pix_fmt
+                            if z.ok and not z.connect_error:
+                                break
                             mp4_ok = z.ok and self._rssbotLib is not None and self._rssbotLib.convert_ugoira_to_mp4(z, content['ugoiraList'][0]['frames'], force_yuv420p)
                             if mp4_ok:
                                 mp4 = z.getSubFile('_yuv420p' if force_yuv420p else '_origin', 'mp4')
@@ -720,7 +731,10 @@ class main:
                 else:
                     fileEntry = self._tempFileEntries.add(i, config)
                     if not fileEntry.ok:
-                        return None
+                        if fileEntry.connect_error:
+                            continue
+                        else:
+                            break
                     should_use_file = False if not config.send_img_as_file else True
                     is_supported_photo = None
                     is_too_big = None
@@ -784,7 +798,10 @@ class main:
                 else:
                     fileEntry = self._tempFileEntries.add(i['src'], config)
                     if not fileEntry.ok:
-                        return None
+                        if fileEntry.connect_error:
+                            continue
+                        else:
+                            break
                     if self._setting.sendFileURLScheme:
                         di2['media'] = fileEntry._localURI
                     else:
@@ -801,7 +818,10 @@ class main:
                     else:
                         fileEntry = self._tempFileEntries.add(i['poster'], config)
                         if not fileEntry.ok:
-                            return None
+                            if fileEntry.connect_error:
+                                continue
+                            else:
+                                break
                         if self._setting.sendFileURLScheme:
                             di2['thumb'] = fileEntry._localURI
                         else:
