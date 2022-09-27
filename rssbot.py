@@ -491,7 +491,7 @@ class main:
                                     fileEntry._fullfn, fileEntry._f)
                             z = self._tempFileEntries.add(content['ugoiraList'][0]['src'], config)
                             force_yuv420p = not config.send_ugoira_with_origin_pix_fmt
-                            if z.ok and not z.connect_error:
+                            if not z.ok and not z.connect_error:
                                 break
                             mp4_ok = z.ok and self._rssbotLib is not None and self._rssbotLib.convert_ugoira_to_mp4(z, content['ugoiraList'][0]['frames'], force_yuv420p)
                             if mp4_ok:
