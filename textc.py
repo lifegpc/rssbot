@@ -230,6 +230,12 @@ class textc:
         else:
             self.__str = f'{self.__str}\n{s}'
 
+    def addtotext2(self, s: str):
+        if self.__str == '':
+            self.__str = s
+        else:
+            self.__str = f'{s}\n{self.__str}'
+
 
 def timeToStr(t: int) -> str:
     te = strftime('%Y-%m-%dT%H:%M:%S', localtime(t))

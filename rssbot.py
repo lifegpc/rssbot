@@ -291,6 +291,8 @@ class main:
                                 if fileEntry.connect_error:
                                     continue
                                 else:
+                                    f = False
+                                    text.addtotext2(di['caption'])
                                     break
                             should_use_file = False if not config.send_img_as_file else True
                             is_supported_photo = None
