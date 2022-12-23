@@ -370,7 +370,8 @@ class database:
             cur = self._db.execute("SELECT * FROM RSSList WHERE id = ?;", (i.id,))
             if cur.rowcount == 0:
                 return False
-            cur = self._db.execute("SELECT * FROM hashList WHERE id = ?;", (i.id,))
+            cur = self._db.execute(
+                "SELECT * FROM hashList WHERE id = ? ORDER BY time;", (i.id,))
             for j in cur:
                 i.hashList.add(HashEntry(j))
             i.hashListLoaded = True
