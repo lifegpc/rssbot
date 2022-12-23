@@ -605,6 +605,8 @@ class main:
             re = None
             def send_file_in_list():
                 nonlocal re
+                nonlocal di
+                nonlocal di3
                 if len(di['media']) == 1:
                     tmp_di = di['media'][0]
                     for k in di.keys():
