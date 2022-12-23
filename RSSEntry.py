@@ -191,6 +191,7 @@ class RSSEntry:
                 self._settings = {}
         self.chatList = []
         self.hashList = HashEntries(maxCount)
+        self.hashListLoaded = False
 
     @property
     def title(self) -> str:

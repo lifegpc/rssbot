@@ -25,6 +25,8 @@ class RSSCheckerThread(Thread):
     def __loop(self):
         for rss in self._main._db.getAllRSSList():
             if self.__needUpdate(rss) or self._main._commandLine.rebuildHashlist:
+                if self._main._db.getRSSHashList(rss) is False:
+                    continue
                 try:
                     p = RSSParser()
                     p.parse(rss.url, self._main._setting.RSSTimeout)

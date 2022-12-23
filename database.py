@@ -313,10 +313,6 @@ class database:
                 for i2 in cur2:
                     temp2 = ChatEntry(i2, temp._settings)
                     temp.chatList.append(temp2)
-                cur3 = self._db.execute(
-                    f"SELECT * FROM hashList WHERE id=? ORDER BY time;", (temp.id,))
-                for i3 in cur3:
-                    temp.hashList.add(HashEntry(i3))
                 if len(temp.chatList) == 0:
                     self.__removeRSSEntry(temp.id)
                 else:
@@ -367,10 +363,23 @@ class database:
                 return i[0]
             return None
 
+    def getRSSHashList(self, i: RSSEntry):
+        if i.hashListLoaded:
+            return True
+        with self._value_lock:
+            cur = self._db.execute("SELECT * FROM RSSList WHERE id = ?;", (i.id,))
+            if cur.rowcount == 0:
+                return False
+            cur = self._db.execute("SELECT * FROM hashList WHERE id = ?;", (i.id,))
+            for j in cur:
+                i.hashList.add(HashEntry(j))
+            i.hashListLoaded = True
+            return True
+
     def getRSSList(self) -> Optional[List[RSSEntry]]:
         '''返回不带chatList和hashList的RSS列表'''
         with self._value_lock:
-            cur = self._db.execute(f'SELECT * FROM RSSList;')
+            cur = self._db.execute('SELECT * FROM RSSList;')
             r = []
             for i in cur:
                 r.append(RSSEntry(i, self._main._setting.maxCount))
