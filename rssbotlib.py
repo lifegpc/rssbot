@@ -17,6 +17,15 @@ from enum import unique, Enum
 from traceback import print_exc
 from typing import Optional, Tuple
 try:
+    import platform
+    if platform.system() == "Windows":
+        import sys
+        if sys.version_info.major >= 3 and sys.version_info.minor >= 8:
+            import os
+            p = os.environ.get("RSSBOTLIB_DEP_PATH")
+            if p is not None:
+                for p in p.split(';'):
+                    os.add_dll_directory(p)
     from _rssbotlib import version, VideoInfo, convert_ugoira_to_mp4, AVDict, convert_to_tg_thumbnail, tg_image_compress
     have_rssbotlib = True
 except ImportError:
