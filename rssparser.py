@@ -243,6 +243,35 @@ class RSSParser:
                     for k in i.childNodes:
                         m[i.nodeName] = m[i.nodeName] + k.toxml()
                 break
+        
+        def dealMediaContentNode(i):
+            media_type = ''
+            if 'medium' in i.attributes:
+                media_type = i.attributes['medium'].nodeValue
+            elif 'type' in i.attributes:
+                media_type = i.attributes['type'].nodeValue
+            if media_type == '':
+                return
+            url = None
+            if 'url' in i.attributes:
+                url = i.attributes['url'].nodeValue
+            else:
+                for k in i.childNodes:
+                    if k.nodeName == 'media:player' and k.namespaceURI == 'http://search.yahoo.com/mrss/' and 'url' in k.attributes:
+                        url = k.attributes['url'].nodeValue
+                        break
+            if url is None:
+                return
+            url = urljoin(m['link'] if 'link' in m and m['link'] is not None else '', url)
+            if media_type == 'image' or media_type.startswith('image/'):
+                if 'imgList' not in m:
+                    m['imgList'] = []
+                m['imgList'].append(url)
+            elif media_type == 'video' or media_type.startswith('video/'):
+                if 'videoList' not in m:
+                    m['videoList'] = []
+                m['videoList'].append({ 'src': url })
+
         for i in node.childNodes:
             if i.nodeName == 'link':
                 continue
@@ -264,6 +293,33 @@ class RSSParser:
                     m['imgList'] = p.imgList
                     m['videoList'] = p.videoList
                     m['ugoiraList'] = p.ugoiraList
+            elif i.nodeName in ['description', 'content:encoded']:
+                p = HTMLSimpleParser()
+                if 'link' in m and m['link'] is not None:
+                    p.baseUrl = m['link']
+                p.feed(i.firstChild.nodeValue)
+                if p.data == '':
+                    m[i.nodeName] = i.firstChild.nodeValue
+                else:
+                    m[i.nodeName] = p.data
+                if i.nodeName == 'content:encoded':
+                    m['description'] = m['content:encoded']
+                    del m['content:encoded']
+                if 'imgList' not in m:
+                    m['imgList'] = p.imgList
+                else:
+                    m['imgList'] += p.imgList
+                if 'videoList' not in m:
+                    m['videoList'] = p.videoList
+                else:
+                    m['videoList'] += p.videoList
+                m['ugoiraList'] = p.ugoiraList
+            elif i.nodeName == 'media:content' and i.namespaceURI == 'http://search.yahoo.com/mrss/':
+                dealMediaContentNode(i)
+            elif i.nodeName == 'media:group' and i.namespaceURI == 'http://search.yahoo.com/mrss/':
+                for k in i.childNodes:
+                    if k.nodeName == 'media:content' and k.namespaceURI == 'http://search.yahoo.com/mrss/':
+                        dealMediaContentNode(k)
             else:
                 m[i.nodeName] = ''
                 for k in i.childNodes:
