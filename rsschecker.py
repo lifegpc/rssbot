@@ -47,17 +47,19 @@ class RSSCheckerThread(Thread):
                                 rss.hashList.add(hashEntry)
                                 for info in rss.chatList:
                                     chatEntry: ChatEntry = info
-                                    try:
-                                        suc, text = self._main._sendMessage(
-                                            chatEntry.chatId, meta, item, chatEntry.config, True)
-                                        if not suc:
-                                            text2 = f'\n{rss.title}'
-                                            if 'link' in item:
-                                                text2 = f"{text2}\n{item['link']}"
-                                            self._main._request('sendMessage', 'post', {
-                                                                'chat_id': chatEntry.chatId, 'text': f'发送失败。\n{text}{text2}'})
-                                    except:
-                                        print(format_exc())
+                                    for tid in chatEntry.config.thread_ids.iter():
+                                        try:
+                                            suc, text = self._main._sendMessage(chatEntry.chatId, meta, item, chatEntry.config, tid, True)
+                                            if not suc:
+                                                text2 = f'\n{rss.title}'
+                                                if 'link' in item:
+                                                    text2 = f"{text2}\n{item['link']}"
+                                                di = {'chat_id': chatEntry.chatId, 'text': f'发送失败。\n{text}{text2}'}
+                                                if tid is not None:
+                                                    di['message_thread_id'] = tid
+                                                self._main._request('sendMessage', 'post', di)
+                                        except:
+                                            print(format_exc())
                     else:
                         raise ValueError('Unknown RSS.')
                     self._main._db.updateRSS(

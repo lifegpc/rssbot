@@ -50,6 +50,11 @@ class InlineKeyBoardForRSSList(Enum):
     SendUgoiraWithOriginPixFmt = 22
     SendUgoiraMethod = 23
     CompressBigImage = 24
+    EnableTopic = 25
+    AddTopicToList = 26
+    EnableSendWithoutTopicId = 27
+    RemoveTopicFromList = 28
+    DisableTopic = 29
 
 
 def getTextContentForRSSInList(rssEntry: RSSEntry, s: settings) -> str:
@@ -81,6 +86,13 @@ def getTextContentForRSSInList(rssEntry: RSSEntry, s: settings) -> str:
         text.addtotext(f"发送媒体：{config.send_media}")
         text += f"单独一行显示链接：{config.display_entry_link}"
         text += f"发送图片为文件：{config.send_img_as_file}"
+        if config.thread_ids.isEnabled:
+            text += f"发送到默认话题：{config.thread_ids._without_id}"
+            text += f"要发送到的话题ID列表："
+            for i in config.thread_ids._list:
+                text += f"{i}"
+        else:
+            text += "未启用发送到话题功能"
         if have_rssbotlib:
             text += f'发送原始像素格式的Pixiv动图：{config.send_ugoira_with_origin_pix_fmt}'
             text += f'发送Pixiv动图为{config.send_ugoira_method}'
@@ -223,10 +235,35 @@ def getInlineKeyBoardForRSSSettingsInList(chatId: int, rssEntry: RSSEntry, index
             d[i].append({'text': temp, 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.SendUgoiraMethod.value},{index},{rssEntry.id},{temp2.value}'})
             temp = f"{'禁用' if config.compress_big_image else '启用'}压缩过大图片"
             d[i].append({'text': temp, 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.CompressBigImage.value},{index},{rssEntry.id}'})
+        d.append([])
+        i += 1
+        d[i].append({'text': f'{"管理" if config.thread_ids.isEnabled else "启用"}发送到话题功能', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.EnableTopic.value},{index},{rssEntry.id}'})
     d.append([])
     i = i + 1
     d[i].append(
         {'text': '返回', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.BackToContentPage.value},{index},{rssEntry.id}'})
+    return {'inline_keyboard': d}
+
+
+def getInlineKeyBoardForRSSThreadIdsInList(chatId: int, rssEntry: RSSEntry, index: int) -> dict:
+    config = rssEntry.chatList[0].config
+    d = [[]]
+    i = 0
+    d[i].append({'text': '添加新的话题', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.AddTopicToList.value},{index},{rssEntry.id}'})
+    if config.thread_ids.isEnabled:
+        d.append([])
+        i += 1
+        temp = f"{'禁用' if config.thread_ids._without_id else '启用'}发送到默认话题"
+        d[i].append({'text': temp, 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.EnableSendWithoutTopicId.value},{index},{rssEntry.id}'})
+        d.append([])
+        i += 1
+        d[i].append({'text': '移除已有的话题', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.RemoveTopicFromList.value},{index},{rssEntry.id}'})
+        d.append([])
+        i += 1
+        d[i].append({'text': '禁用发送到话题功能', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.DisableTopic.value},{index},{rssEntry.id}'})
+    d.append([])
+    i += 1
+    d[i].append({'text': '返回', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.SettingsPage.value},{index},{rssEntry.id}'})
     return {'inline_keyboard': d}
 
 

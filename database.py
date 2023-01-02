@@ -80,6 +80,8 @@ PRIMARY KEY (id)
 class userStatus(Enum):
     normalStatus = 0
     needInputChatId = 1
+    needInputThreadId = 2
+    needRemoveThreadId = 3
 
 
 class database:

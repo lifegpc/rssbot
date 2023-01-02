@@ -35,6 +35,36 @@ class SendUgoiraMethod(Enum):
             return '文件'
 
 
+class MessageThreadIdList:
+    def __init__(self) -> None:
+        self._list = []
+        self._without_id = False
+
+    def iter(self):
+        if len(self._list) == 0:
+            return [None]
+        li = [None] + self._list if self._without_id else self._list
+        return li
+
+    @property
+    def isEnabled(self):
+        return len(self._list) != 0
+
+    def addId(self, id: int):
+        if id not in self._list:
+            self._list.append(id)
+
+    def clear(self):
+        self._list.clear()
+        self._without_id = False
+
+    def removeId(self, id: int):
+        if id in self._list:
+            self._list.remove(id)
+            return True
+        return False
+
+
 class RSSConfig:
     def __init__(self, d: dict = None):
         self.disable_web_page_preview = False
@@ -48,10 +78,11 @@ class RSSConfig:
         self.send_ugoira_with_origin_pix_fmt = False
         self.send_ugoira_method = SendUgoiraMethod(0)
         self.compress_big_image = True
+        self.thread_ids = MessageThreadIdList()
         self.update(d)
 
     def toJson(self):
-        return dumps({'disable_web_page_preview': self.disable_web_page_preview, 'show_RSS_title': self.show_RSS_title, 'show_Content_title': self.show_Content_title, 'show_content': self.show_content, 'send_media': self.send_media, 'display_entry_link': self.display_entry_link, 'send_img_as_file': self.send_img_as_file, 'send_ugoira_with_origin_pix_fmt': self.send_ugoira_with_origin_pix_fmt, 'send_ugoira_method': self.send_ugoira_method.value, "compress_big_image": self.compress_big_image}, ensure_ascii=False)
+        return dumps({'disable_web_page_preview': self.disable_web_page_preview, 'show_RSS_title': self.show_RSS_title, 'show_Content_title': self.show_Content_title, 'show_content': self.show_content, 'send_media': self.send_media, 'display_entry_link': self.display_entry_link, 'send_img_as_file': self.send_img_as_file, 'send_ugoira_with_origin_pix_fmt': self.send_ugoira_with_origin_pix_fmt, 'send_ugoira_method': self.send_ugoira_method.value, "compress_big_image": self.compress_big_image, 'thread_ids': {'list': self.thread_ids._list, 'without_id': self.thread_ids._without_id}}, ensure_ascii=False)
 
     def update(self, d: dict):
         if d is not None:
@@ -59,6 +90,9 @@ class RSSConfig:
                 if hasattr(self, k):
                     if k == 'send_ugoira_method':
                         self.send_ugoira_method = SendUgoiraMethod(d[k])
+                    elif k == 'thread_ids':
+                        self.thread_ids._list = d[k]['list']
+                        self.thread_ids._without_id = d[k]['without_id']
                     else:
                         setattr(self, k, d[k])
 
