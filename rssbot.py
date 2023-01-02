@@ -1402,8 +1402,18 @@ class messageHandle(Thread):
                         di['text'] = '找不到RSS。'
                         self._main._request('sendMessage', 'post', json=di)
                         return
+                    para = self._getCommandlinePara()
+                    messageThreadId = None
+                    for i in para:
+                        if search(r'^[\+-]?[0-9]+$', i) is not None:
+                            messageThreadId = int(i)
+                            break
+                    if messageThreadId is None:
+                        di['text'] = '找不到话题ID。'
+                        self._main._request('sendMessage', 'post', json=di)
+                        return
                     chatEntry: ChatEntry = rssEntry.chatList[0]
-                    if not chatEntry.config.thread_ids.removeId(ind):
+                    if not chatEntry.config.thread_ids.removeId(messageThreadId):
                         di['text'] = '移除失败。该话题不在列表中。'
                         self._main._request('sendMessage', 'post', json=di)
                         return
