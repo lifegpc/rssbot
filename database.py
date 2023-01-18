@@ -315,6 +315,7 @@ class database:
                 for i2 in cur2:
                     temp2 = ChatEntry(i2, temp._settings)
                     temp.chatList.append(temp2)
+                    temp.chatListLoaded = True
                 if len(temp.chatList) == 0:
                     self.__removeRSSEntry(temp.id)
                 else:
@@ -364,6 +365,25 @@ class database:
             for i in cur:
                 return i[0]
             return None
+
+    def getRSSChatById(self, i: RSSEntry, chatId: int):
+        with self._value_lock:
+            cur = self._db.execute("SELECT * FROM chatList WHERE id = ? AND chatId = ?;", (i.id, chatId))
+            i.chatListLoaded = False
+            i.chatList.clear()
+            for i2 in cur:
+                i.chatList.append(ChatEntry(i2, i._settings))
+
+
+    def getRSSChatList(self, i: RSSEntry):
+        if i.chatListLoaded:
+            return
+        with self._value_lock:
+            cur = self._db.execute("SELECT * FROM chatList WHERE id = ?;", (i.id,))
+            i.chatList.clear()
+            for i2 in cur:
+                i.chatList.append(ChatEntry(i2, i._settings))
+        i.chatListLoaded = True
 
     def getRSSHashList(self, i: RSSEntry):
         if i.hashListLoaded:

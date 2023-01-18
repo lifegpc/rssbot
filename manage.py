@@ -170,6 +170,13 @@ def getTextContentForRSSInManageList(m, rssEntry: RSSEntry, s: settings, chatId:
         text.addtotext(f"发送媒体：{config.send_media}")
         text += f"单独一行显示链接：{config.display_entry_link}"
         text += f"发送图片为文件：{config.send_img_as_file}"
+        if config.thread_ids.isEnabled:
+            text += f"发送到默认话题：{config.thread_ids._without_id}"
+            text += f"要发送到的话题ID列表："
+            for i in config.thread_ids._list:
+                text += f"{i}"
+        else:
+            text += "未启用发送到话题功能"
         if have_rssbotlib:
             text += f'发送原始像素格式的Pixiv动图：{config.send_ugoira_with_origin_pix_fmt}'
             text += f'发送Pixiv动图为{config.send_ugoira_method}'
@@ -183,17 +190,55 @@ def getTextContentForRSSInManageList(m, rssEntry: RSSEntry, s: settings, chatId:
     return text.tostr()
 
 
-def getInlineKeyBoardForRSSInManageList(rss: RSSEntry, index: int, chatId: int = None, chatIndex: int = None):
+def getInlineKeyBoardForRSSInManageList(rss: RSSEntry, index: int, base: str, chatId: int = None, chatIndex: int = None, m = None, page: int = None, lastPage: bool = False):
     d = []
     i = -1
     d.append([])
     i += 1
     have_chat_id = chatId is not None and chatIndex is not None
     if have_chat_id:
-        d[i].append({'text': '取消订阅', 'callback_data': f'3,{InlineKeyBoardForManage.ManageByChatId.value},{InlineKeyBoardForManage.ChatManage.value},{chatIndex},{chatId},{InlineKeyBoardForManage.RSSManage.value},{index},{rss.id},{InlineKeyBoardForManage.Unsubscribe.value}'})
+        d[i].append({'text': '取消订阅', 'callback_data': f'{base},{InlineKeyBoardForManage.RSSManage.value},{index},{rss.id},{InlineKeyBoardForManage.Unsubscribe.value}'})
+    else:
+        from rssbot import main
+        if m is None:
+            raise ValueError('m must not be None.')
+        m: main = m
+        m._db.getRSSChatList(rss)
+        lineLimit = 7
+        chatCount = len(rss.chatList)
+        pn = ceil(chatCount / lineLimit)
+        if lastPage:
+            page = pn
+        if chatIndex is not None and chatIndex >= 0:
+            page = floor(chatIndex / lineLimit) + 1
+        if page is None:
+            page = 1
+        if chatCount != 0:
+            page = max(min(pn, page), 1)
+            s = max(lineLimit * (page - 1), 0)
+            n = min(lineLimit * page, chatCount)
+            while s < n:
+                chat: ChatEntry = rss.chatList[s]
+                d.append([])
+                i = i + 1
+                d[i].append({'text': m.getChatName(chat.chatId), 'callback_data': f'{base},{InlineKeyBoardForManage.RSSManage.value},{index},{rss.id},{InlineKeyBoardForManage.ChatManage.value},{s},{chat.chatId}' })
+                s += 1
+            if pn != 1:
+                d.append([])
+                i += 1
+                if page != 1:
+                    d[i].append({'text': '上一页', 'callback_data': f'{base},{InlineKeyBoardForManage.RSSManage.value},{index},{rss.id},{InlineKeyBoardForManage.PrevPage.value},{page}'})
+                if page != pn:
+                    d[i].append({'text': '下一页', 'callback_data': f'{base},{InlineKeyBoardForManage.RSSManage.value},{index},{rss.id},{InlineKeyBoardForManage.NextPage.value},{page}'})
+                d.append([])
+                i = i + 1
+                if page != 1:
+                    d[i].append({'text': '首页', 'callback_data': f'{base},{InlineKeyBoardForManage.RSSManage.value},{index},{rss.id},{InlineKeyBoardForManage.FirstPage.value}'})
+                if page != pn:
+                    d[i].append({'text': '尾页', 'callback_data': f'{base},{InlineKeyBoardForManage.RSSManage.value},{index},{rss.id},{InlineKeyBoardForManage.LastPage.value}'})
     d.append([])
     i += 1
-    d[i].append({'text': '返回', 'callback_data': (f'3,{InlineKeyBoardForManage.ManageByChatId.value},{InlineKeyBoardForManage.ChatManage.value},{chatIndex},{chatId}' if have_chat_id else f'3,{InlineKeyBoardForManage.ManageByRSS.value}') + f',{InlineKeyBoardForManage.BackToList.value},{index}' })
+    d[i].append({'text': '返回', 'callback_data': f'{base},{InlineKeyBoardForManage.BackToList.value},{index}' })
     return {'inline_keyboard': d}
 
 

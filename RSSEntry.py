@@ -190,6 +190,7 @@ class RSSEntry:
             except Exception:
                 self._settings = {}
         self.chatList = []
+        self.chatListLoaded = False
         self.hashList = HashEntries(maxCount)
         self.hashListLoaded = False
 

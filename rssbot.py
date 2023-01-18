@@ -2518,10 +2518,24 @@ class callbackQueryHandle(Thread):
                         rssEntry = self._main._db.getRSSByIdAndChatId(rssManageRSSId, rssManageChatId)
                     else:
                         rssEntry = self._main._db.getRSSById(rssManageRSSId)
-                    if rssManageCommand is None:
+                    if rssManageCommand is None or rssManageCommand in [InlineKeyBoardForManage.FirstPage, InlineKeyBoardForManage.ChatManage, InlineKeyBoardForManage.BackToList]:
+                        if rssManageCommand == InlineKeyBoardForManage.ChatManage:
+                            try:
+                                rssManageChatIndex = int(rssManageSubList[0])
+                                rssManageChatId = int(rssManageSubList[1])
+                            except Exception:
+                                self.answer('未知的按钮。')
+                                return
+                            self._main._db.getRSSChatById(rssEntry, rssManageChatId)
                         di['text'] = getTextContentForRSSInManageList(self._main, rssEntry, self._main._setting, rssManageChatId)
                         di['parse_mode'] = 'HTML'
-                        di['reply_markup'] = getInlineKeyBoardForRSSInManageList(rssEntry, rssManageIndex, rssManageChatId, rssManageChatIndex)
+                        if self._inlineKeyBoardForManageCommand == InlineKeyBoardForManage.ManageByChatId:
+                            base = f'3,{InlineKeyBoardForManage.ManageByChatId.value},{InlineKeyBoardForManage.ChatManage.value},{rssManageChatIndex},{rssManageChatId}'
+                        else:
+                            base = f'3,{InlineKeyBoardForManage.ManageByRSS.value}'
+                            if rssManageCommand == InlineKeyBoardForManage.ChatManage:
+                                base += f',{InlineKeyBoardForManage.RSSManage.value},{rssManageIndex},{rssEntry.id}'
+                        di['reply_markup'] = getInlineKeyBoardForRSSInManageList(rssEntry, rssManageIndex, base, rssManageChatId, rssManageChatIndex, self._main)
                         self._main._request("editMessageText", "post", json=di)
                         return
                     elif rssManageCommand == InlineKeyBoardForManage.Unsubscribe:
