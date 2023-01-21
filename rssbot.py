@@ -1668,7 +1668,7 @@ class callbackQueryHandle(Thread):
     def run(self):
         self._callbackQueryId = self._data['id']
         self._fromUserId = self._data['from']['id']
-        self._fromChatId = self._data['chat']['id']
+        self._fromChatId = self._data['message']['chat']['id']
         if self._main._blackList.isInBlackList(self._fromUserId):
             self.answer('您已被封禁。')
             return
