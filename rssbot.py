@@ -1399,6 +1399,10 @@ class messageHandle(Thread):
                     messageId = int(hashd[2])
                     ind = int(hashd[3])
                     rssId = int(hashd[4])
+                    try:
+                        fromChatId = int(hashd[5])
+                    except Exception:
+                        fromChatId = chatId
                     rssEntry = self._main._db.getRSSByIdAndChatId(rssId, chatId)
                     if rssEntry is None:
                         self._main._db.setUserStatus(
@@ -1428,7 +1432,7 @@ class messageHandle(Thread):
                         self._main._request('sendMessage', 'post', json=di)
                         return
                     self._main._request('sendMessage', 'post', json=di)
-                    di2 = {'chat_id': chatId, 'message_id': messageId}
+                    di2 = {'chat_id': fromChatId, 'message_id': messageId}
                     di2['text'] = getTextContentForRSSInList(rssEntry, self._main._setting)
                     di2['parse_mode'] = 'HTML'
                     di2['reply_markup'] = getInlineKeyBoardForRSSThreadIdsInList(
