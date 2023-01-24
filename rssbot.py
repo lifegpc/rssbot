@@ -1716,14 +1716,14 @@ class callbackQueryHandle(Thread):
                 self._userId = self._rssMeta.meta['userId']
             if self._userId is not None and self._data['from']['id'] != self._userId:
                 self.answer('你没有权限操作。')
+            chatId = None
+            if 'chatId' in self._rssMeta.meta and self._rssMeta.meta['chatId'] is not None:
+                chatId = self._rssMeta.meta['chatId']
+            elif self._userId is not None:
+                chatId = self._userId
             if self._inlineKeyBoardCommand == InlineKeyBoardCallBack.Subscribe:
                 title = self._rssMeta.meta['title']
                 url = self._rssMeta.meta['url']
-                chatId = None
-                if 'chatId' in self._rssMeta.meta and self._rssMeta.meta['chatId'] is not None:
-                    chatId = self._rssMeta.meta['chatId']
-                elif self._userId is not None:
-                    chatId = self._userId
                 if chatId is None:
                     self.answer('缺少发送的位置')
                     return
@@ -1864,7 +1864,7 @@ class callbackQueryHandle(Thread):
             elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.EnableTopic:
                 di = {'chat_id': self._rssMeta.chatId,
                       'message_id': self._rssMeta.messageId}
-                re = self._main.checkChatIsForum(self._rssMeta.meta['chatId'])
+                re = self._main.checkChatIsForum(chatId)
                 if re is True:
                     di['text'] = getMediaInfo(
                         self._rssMeta.meta, self._rssMeta.config)
@@ -1880,7 +1880,7 @@ class callbackQueryHandle(Thread):
             elif self._userId is not None and self._inlineKeyBoardCommand in [InlineKeyBoardCallBack.AddTopicToList, InlineKeyBoardCallBack.RemoveTopicFromList]:
                 di = {'chat_id': self._rssMeta.chatId,
                       'message_id': self._rssMeta.messageId}
-                re = self._main.checkChatIsForum(self._rssMeta.meta['chatId'])
+                re = self._main.checkChatIsForum(chatId)
                 if re is not True:
                     self.answer('请先启用话题功能' if re is False else re)
                     self._rssMeta.config.thread_ids.clear()
@@ -1914,7 +1914,7 @@ class callbackQueryHandle(Thread):
             elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.EnableSendWithoutTopicId:
                 di = {'chat_id': self._rssMeta.chatId,
                       'message_id': self._rssMeta.messageId}
-                re = self._main.checkChatIsForum(self._rssMeta.meta['chatId'])
+                re = self._main.checkChatIsForum(chatId)
                 if re is not True:
                     self.answer('请先启用话题功能' if re is False else re)
                     self._rssMeta.config.thread_ids.clear()
