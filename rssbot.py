@@ -1176,7 +1176,10 @@ class messageHandle(Thread):
                         di['text'] = '已过期。'
                         self._main._request('sendMessage', 'post', json=di)
                         return
-                    if metainfo.chatId != self._chatId:
+                    chatId = metainfo.chatId
+                    if 'chatId' in metainfo.meta and metainfo.meta['chatId'] is not None:
+                        chatId = metainfo.meta['chatId']
+                    if chatId != self._chatId:
                         di['text'] = 'Chat ID不一致，请在同一个群里回复机器人。'
                         self._main._request('sendMessage', 'post', json=di)
                         return
