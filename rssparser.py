@@ -139,6 +139,12 @@ class HTMLSimpleParser(HTMLParser):
             elif len(self.tagName) > 1:
                 self.tagContent[-2].add(
                     f"<{tag}{self.tagAttrs[-1]}>{self.tagContent[-1].export()}</{tag}>")
+        elif tag in ['p']:
+            tmp = '' if self.data == '' else '\n\n'
+            if len(self.tagName) == 1:
+                self.data += tmp + self.tagContent[-1].export()
+            else:
+                self.tagContent[-2].add(tmp + self.tagContent[-1].export())
         elif tag not in ['img', 'video', 'br', 'ugoira']:
             if len(self.tagName) == 1:
                 self.data = f"{self.data}{self.tagContent[-1].export()}"
