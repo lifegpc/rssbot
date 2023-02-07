@@ -140,7 +140,7 @@ class HTMLSimpleParser(HTMLParser):
                 self.tagContent[-2].add(
                     f"<{tag}{self.tagAttrs[-1]}>{self.tagContent[-1].export()}</{tag}>")
         elif tag in ['p']:
-            tmp = '' if self.data == '' else '\n\n'
+            tmp = '' if self.data == '' else '\n'
             if len(self.tagName) == 1:
                 self.data += tmp + self.tagContent[-1].export()
             else:
