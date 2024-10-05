@@ -301,14 +301,14 @@ class main:
             return len(content[key])
         if not config.send_media or (getListCount(content, 'imgList') == 0 and getListCount(content, 'videoList') == 0 and getListCount(content, 'ugoiraList') == 0):
             if config.disable_web_page_preview:
-                di['disable_web_page_preview'] = True
+                di['link_preview_options'] = { 'is_disabled': True }
             while len(text) > 0:
                 di['text'] = text.tostr()
                 di['parse_mode'] = 'HTML'
                 for i in range(self._setting.maxRetryCount + 1):
                     re = self._request('sendMessage', 'post', json=di)
                     if re is not None and 'ok' in re and re['ok']:
-                        di['reply_to_message_id'] = re['result']['message_id']
+                        di['reply_parameters'] = { 'message_id': re['result']['message_id'] }
                         break
                     if i == self._setting.maxRetryCount:
                         if returnError and re is not None and 'description' in re:
@@ -391,7 +391,7 @@ class main:
                     else:
                         re = self._request('sendMessage', 'post', json=di)
                     if re is not None and 'ok' in re and re['ok']:
-                        di['reply_to_message_id'] = re['result']['message_id']
+                        di['reply_parameters'] = { 'message_id': re['result']['message_id'] }
                         if f:
                             del di['caption']
                             if 'photo' in di:
@@ -400,7 +400,7 @@ class main:
                                 del di['document']
                             f = False
                             if config.disable_web_page_preview:
-                                di['disable_web_page_preview'] = True
+                                di['link_preview_options'] = { 'is_disabled': True }
                         break
                     if i == self._setting.maxRetryCount:
                         if returnError and re is not None and 'description' in re:
@@ -473,7 +473,7 @@ class main:
                                 di['text'] = di['caption']
                                 del di['caption']
                                 if config.disable_web_page_preview:
-                                    di['disable_web_page_preview'] = True
+                                    di['link_preview_options'] = { 'is_disabled': True }
                                 re = self._request(
                                     'sendMessage', 'post', json=di)
                         if isOk:
@@ -486,7 +486,7 @@ class main:
                     else:
                         re = self._request('sendMessage', 'post', json=di)
                     if re is not None and 'ok' in re and re['ok']:
-                        di['reply_to_message_id'] = re['result']['message_id']
+                        di['reply_parameters'] = { 'message_id': re['result']['message_id'] }
                         if f:
                             if 'video' in di:
                                 del di['video']
@@ -502,7 +502,7 @@ class main:
                             if 'height' in di:
                                 del di['height']
                             if config.disable_web_page_preview:
-                                di['disable_web_page_preview'] = True
+                                di['link_preview_options'] = { 'is_disabled': True }
                             f = False
                         break
                     if i == self._setting.maxRetryCount:
@@ -609,7 +609,7 @@ class main:
                     else:
                         re = self._request('sendMessage', 'post', json=di)
                     if re is not None and 'ok' in re and re['ok']:
-                        di['reply_to_message_id'] = re['result']['message_id']
+                        di['reply_parameters'] = { 'message_id': re['result']['message_id'] }
                         if f:
                             if 'photo' in di:
                                 del di['photo']
@@ -630,7 +630,7 @@ class main:
                             if 'height' in di:
                                 del di['height']
                             if config.disable_web_page_preview:
-                                di['disable_web_page_preview'] = True
+                                di['link_preview_options'] = { 'is_disabled': True }
                             f = False
                         break
                     if i == self._setting.maxRetryCount:
@@ -676,7 +676,7 @@ class main:
                                 re = self._request(
                                     'sendPhoto', 'post', json=tmp_di, files=tmp_di3)
                             if re is not None and 'ok' in re and re['ok']:
-                                di['reply_to_message_id'] = re['result']['message_id']
+                                di['reply_parameters'] = { 'message_id': re['result']['message_id'] }
                                 break
                             sleep(5)
                     elif tmp_di['type'] == 'video':
@@ -699,7 +699,7 @@ class main:
                                 re = self._request(
                                     'sendVideo', 'post', json=tmp_di, files=tmp_di3)
                             if re is not None and 'ok' in re and re['ok']:
-                                di['reply_to_message_id'] = re['result']['message_id']
+                                di['reply_parameters'] = { 'message_id': re['result']['message_id'] }
                                 break
                             sleep(5)
                     elif tmp_di['type'] == 'document':
@@ -722,7 +722,7 @@ class main:
                                 re = self._request(
                                     'sendDocument', 'post', json=tmp_di, files=tmp_di3)
                             if re is not None and 'ok' in re and re['ok']:
-                                di['reply_to_message_id'] = re['result']['message_id']
+                                di['reply_parameters'] = { 'message_id': re['result']['message_id'] }
                                 break
                             sleep(5)
                     elif tmp_di['type'] == 'animation':
@@ -745,7 +745,7 @@ class main:
                                 re = self._request(
                                     'sendAnimation', 'post', json=tmp_di, files=tmp_di3)
                             if re is not None and 'ok' in re and re['ok']:
-                                di['reply_to_message_id'] = re['result']['message_id']
+                                di['reply_parameters'] = { 'message_id': re['result']['message_id'] }
                                 break
                             sleep(5)
                 else:
@@ -753,14 +753,14 @@ class main:
                         if not self._setting.downloadMediaFile or self._setting.sendFileURLScheme:
                             re = self._request('sendMediaGroup', 'post', json=di)
                             if re is not None and 'ok' in re and re['ok']:
-                                di['reply_to_message_id'] = re['result'][0]['message_id']
+                                di['reply_parameters'] = { 'message_id': re['result'][0]['message_id'] }
                                 di['media'] = []
                                 break
                         else:
                             re = self._request(
                                 'sendMediaGroup', 'post', json=di, files=di3)
                             if re is not None and 'ok' in re and re['ok']:
-                                di['reply_to_message_id'] = re['result'][0]['message_id']
+                                di['reply_parameters'] = { 'message_id': re['result'][0]['message_id'] }
                                 di['media'] = []
                                 di3 = {}
                                 break
@@ -900,19 +900,19 @@ class main:
                 if messageThreadId is not None:
                     di['message_thread_id'] = messageThreadId
                 if config.disable_web_page_preview:
-                    di['disable_web_page_preview'] = True
+                    di['link_preview_options'] = { 'is_disabled': True }
                 if re is not None and 'ok' in re and re['ok']:
                     if isinstance(re['result'], list):
-                        di['reply_to_message_id'] = re['result'][0]['message_id']
+                        di['reply_parameters'] = { 'message_id': re['result'][0]['message_id'] }
                     else:
-                        di['reply_to_message_id'] = re['result']['message_id']
+                        di['reply_parameters'] = { 'message_id': re['result']['message_id'] }
             while len(text) > 0:
                 di['text'] = text.tostr()
                 di['parse_mode'] = 'HTML'
                 for i in range(self._setting.maxRetryCount + 1):
                     re = self._request('sendMessage', 'post', json=di)
                     if re is not None and 'ok' in re and re['ok']:
-                        di['reply_to_message_id'] = re['result']['message_id']
+                        di['reply_parameters'] = { 'message_id': re['result']['message_id'] }
                         break
                     if i == self._setting.maxRetryCount:
                         if returnError and re is not None and 'description' in re:
@@ -1146,7 +1146,7 @@ class messageHandle(Thread):
         if self._fromUserId is not None:
             di = {'chat_id': self._chatId}
             if self.__getChatType() in ['supergroup', 'group'] and self._fromUserId is not None:
-                di['reply_to_message_id'] = self._messageId
+                di['reply_parameters'] = { 'message_id': self._messageId }
             if self._main._blackList.isInBlackList(self._fromUserId):
                 di['text'] = '您已被封禁。'
                 self._main._request("sendMessage", 'post', json=di)
@@ -1197,7 +1197,7 @@ class messageHandle(Thread):
                     di2 = {'chat_id': metainfo.chatId, 'message_id': metainfo.messageId}
                     di2['text'] = getMediaInfo(metainfo.meta, metainfo.config)
                     di2['parse_mode'] = 'HTML'
-                    di2['disable_web_page_preview'] = True
+                    di2['link_preview_options'] = { 'is_disabled': True }
                     di2['reply_markup'] = getInlineKeyBoardWhenRSS4(
                         hashd[1], metainfo.config)
                     self._main._request("editMessageText", "post", json=di2)
@@ -1353,7 +1353,7 @@ class messageHandle(Thread):
                         di['text'] = getMediaInfo(
                             metainfo.meta, metainfo.config)
                         di['parse_mode'] = 'HTML'
-                        di['disable_web_page_preview'] = True
+                        di['link_preview_options'] = { 'is_disabled': True }
                         di['reply_markup'] = getInlineKeyBoardWhenRSS(
                             self._hashd, metainfo.meta, self._isOwn)
                         self._main._request('editMessageText', 'post', json=di)
@@ -1390,7 +1390,7 @@ class messageHandle(Thread):
                     di2 = {'chat_id': metainfo.chatId, 'message_id': metainfo.messageId}
                     di2['text'] = getMediaInfo(metainfo.meta, metainfo.config)
                     di2['parse_mode'] = 'HTML'
-                    di2['disable_web_page_preview'] = True
+                    di2['link_preview_options'] = { 'is_disabled': True }
                     di2['reply_markup'] = getInlineKeyBoardWhenRSS4(
                         hashd[1], metainfo.config)
                     self._main._request("editMessageText", "post", json=di2)
@@ -1450,7 +1450,7 @@ class messageHandle(Thread):
             self._botCommand = '/help'
         di = {'chat_id': self._chatId}
         if self.__getChatType() in ['supergroup', 'group'] and self._fromUserId is not None:
-            di['reply_to_message_id'] = self._messageId
+            di['reply_parameters'] = { 'message_id': self._messageId }
         if self._botCommand == '/help':
             di['text'] = '''/help   显示帮助
 /rss url    订阅RSS
@@ -1627,7 +1627,7 @@ RSS订阅总数: <code>{self._main._db.getChatRSSCount()}</code>
                     f'{self._uri},{self._messageId},{self._chatId}')
                 di['text'] = getMediaInfo(media)
                 di['parse_mode'] = 'HTML'
-                di['disable_web_page_preview'] = True
+                di['link_preview_options'] = { 'is_disabled': True }
                 di['reply_markup'] = getInlineKeyBoardWhenRSS(
                     self._hash, media, self._isOwn)
                 try:
@@ -1748,7 +1748,7 @@ class callbackQueryHandle(Thread):
                 di['text'] = getMediaInfo(
                     self._rssMeta.meta, self._rssMeta.config)
                 di['parse_mode'] = 'HTML'
-                di['disable_web_page_preview'] = True
+                di['link_preview_options'] = { 'is_disabled': True }
                 self._main._request("editMessageText", "post", json=di)
                 return
             elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.SendPriview:
@@ -1800,7 +1800,7 @@ class callbackQueryHandle(Thread):
                 di['text'] = getMediaInfo(
                     self._rssMeta.meta, self._rssMeta.config)
                 di['parse_mode'] = 'HTML'
-                di['disable_web_page_preview'] = True
+                di['link_preview_options'] = { 'is_disabled': True }
                 di['reply_markup'] = getInlineKeyBoardWhenRSS(
                     self._hashd, self._rssMeta.meta, self._isOwn)
                 self._main._request("editMessageText", "post", json=di)
@@ -1814,7 +1814,7 @@ class callbackQueryHandle(Thread):
                 di['text'] = getMediaInfo(
                     self._rssMeta.meta, self._rssMeta.config)
                 di['parse_mode'] = 'HTML'
-                di['disable_web_page_preview'] = True
+                di['link_preview_options'] = { 'is_disabled': True }
                 di['reply_markup'] = getInlineKeyBoardWhenRSS2(
                     self._hashd, self._rssMeta.config)
                 self._main._request("editMessageText", "post", json=di)
@@ -1826,7 +1826,7 @@ class callbackQueryHandle(Thread):
                 di['text'] = getMediaInfo(
                     self._rssMeta.meta, self._rssMeta.config)
                 di['parse_mode'] = 'HTML'
-                di['disable_web_page_preview'] = True
+                di['link_preview_options'] = { 'is_disabled': True }
                 di['reply_markup'] = getInlineKeyBoardWhenRSS(
                     self._hashd, self._rssMeta.meta, self._isOwn)
                 self._main._request("editMessageText", "post", json=di)
@@ -1858,7 +1858,7 @@ class callbackQueryHandle(Thread):
                 di['text'] = getMediaInfo(
                     self._rssMeta.meta, self._rssMeta.config)
                 di['parse_mode'] = 'HTML'
-                di['disable_web_page_preview'] = True
+                di['link_preview_options'] = { 'is_disabled': True }
                 di['reply_markup'] = getInlineKeyBoardWhenRSS2(
                     self._hashd, self._rssMeta.config)
                 self._main._request("editMessageText", "post", json=di)
@@ -1872,7 +1872,7 @@ class callbackQueryHandle(Thread):
                     di['text'] = getMediaInfo(
                         self._rssMeta.meta, self._rssMeta.config)
                     di['parse_mode'] = 'HTML'
-                    di['disable_web_page_preview'] = True
+                    di['link_preview_options'] = { 'is_disabled': True }
                     di['reply_markup'] = getInlineKeyBoardWhenRSS4(
                         self._hashd, self._rssMeta.config)
                     self._main._request("editMessageText", "post", json=di)
@@ -1892,7 +1892,7 @@ class callbackQueryHandle(Thread):
                     di['text'] = getMediaInfo(
                         self._rssMeta.meta, self._rssMeta.config)
                     di['parse_mode'] = 'HTML'
-                    di['disable_web_page_preview'] = True
+                    di['link_preview_options'] = { 'is_disabled': True }
                     di['reply_markup'] = getInlineKeyBoardWhenRSS2(
                         self._hashd, self._rssMeta.config)
                     self._main._request("editMessageText", "post", json=di)
@@ -1926,7 +1926,7 @@ class callbackQueryHandle(Thread):
                     di['text'] = getMediaInfo(
                         self._rssMeta.meta, self._rssMeta.config)
                     di['parse_mode'] = 'HTML'
-                    di['disable_web_page_preview'] = True
+                    di['link_preview_options'] = { 'is_disabled': True }
                     di['reply_markup'] = getInlineKeyBoardWhenRSS2(
                         self._hashd, self._rssMeta.config)
                     self._main._request("editMessageText", "post", json=di)
@@ -1934,7 +1934,7 @@ class callbackQueryHandle(Thread):
                 self._rssMeta.config.thread_ids._without_id = not self._rssMeta.config.thread_ids._without_id
                 di['text'] = getMediaInfo(self._rssMeta.meta, self._rssMeta.config)
                 di['parse_mode'] = 'HTML'
-                di['disable_web_page_preview'] = True
+                di['link_preview_options'] = { 'is_disabled': True }
                 di['reply_markup'] = getInlineKeyBoardWhenRSS4(self._hashd, self._rssMeta.config)
                 self._main._request("editMessageText", "post", json=di)
                 self.answer()
@@ -1948,7 +1948,7 @@ class callbackQueryHandle(Thread):
                 di['text'] = getMediaInfo(
                     self._rssMeta.meta, self._rssMeta.config)
                 di['parse_mode'] = 'HTML'
-                di['disable_web_page_preview'] = True
+                di['link_preview_options'] = { 'is_disabled': True }
                 di['reply_markup'] = getInlineKeyBoardWhenRSS3(
                     self._hashd, self._rssMeta.config)
                 self._main._request("editMessageText", "post", json=di)
@@ -1961,7 +1961,7 @@ class callbackQueryHandle(Thread):
                 di['text'] = getMediaInfo(
                     self._rssMeta.meta, self._rssMeta.config)
                 di['parse_mode'] = 'HTML'
-                di['disable_web_page_preview'] = True
+                di['link_preview_options'] = { 'is_disabled': True }
                 di['reply_markup'] = getInlineKeyBoardWhenRSS3(
                     self._hashd, self._rssMeta.config)
                 self._main._request("editMessageText", "post", json=di)
