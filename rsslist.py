@@ -55,6 +55,7 @@ class InlineKeyBoardForRSSList(Enum):
     EnableSendWithoutTopicId = 27
     RemoveTopicFromList = 28
     DisableTopic = 29
+    AddAuthor = 30
 
 
 def getTextContentForRSSInList(rssEntry: RSSEntry, s: settings) -> str:
@@ -97,6 +98,7 @@ def getTextContentForRSSInList(rssEntry: RSSEntry, s: settings) -> str:
             text += f'发送原始像素格式的Pixiv动图：{config.send_ugoira_with_origin_pix_fmt}'
             text += f'发送Pixiv动图为{config.send_ugoira_method}'
             text += f"发送时压缩过大图片：{config.compress_big_image}"
+        text += f"添加作者名：{config.add_author}"
         text += f"RSS全局设置："
         text += f"发送时使用原文件名：{config.send_origin_file_name}"
     return text.tostr()
@@ -238,6 +240,7 @@ def getInlineKeyBoardForRSSSettingsInList(chatId: int, rssEntry: RSSEntry, index
         d.append([])
         i += 1
         d[i].append({'text': f'{"管理" if config.thread_ids.isEnabled else "启用"}发送到话题功能', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.EnableTopic.value},{index},{rssEntry.id}'})
+        d[i].append({'text': f'{"禁用" if config.add_author else "启用"}添加作者名', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.AddAuthor.value},{index},{rssEntry.id}'})
     d.append([])
     i = i + 1
     d[i].append(

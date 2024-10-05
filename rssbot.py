@@ -97,6 +97,7 @@ def getMediaInfo(m: dict, config: RSSConfig = RSSConfig()) -> str:
         s += f"\n发送原始像素格式的Pixiv动图：{config.send_ugoira_with_origin_pix_fmt}"
         s += f'\n发送Pixiv动图为{config.send_ugoira_method}'
         s += f"\n发送时压缩过大图片：{config.compress_big_image}"
+    s += f"\n添加作者名：{config.add_author}"
     s += f"\nRSS全局设置："
     s += f"\n发送时使用原文件名：{config.send_origin_file_name}"
     return s
@@ -127,6 +128,7 @@ class InlineKeyBoardCallBack(Enum):
     EnableSendWithoutTopicId = 20
     RemoveTopicFromList = 21
     DisableTopic = 22
+    AddAuthor = 23
 
 
 def getInlineKeyBoardWhenRSS(hashd: str, m: dict, isOwn: bool) -> dict:
@@ -203,6 +205,7 @@ def getInlineKeyBoardWhenRSS2(hashd: str, config: RSSConfig) -> str:
     d.append([])
     i += 1
     d[i].append({'text': f'{"管理" if config.thread_ids.isEnabled else "启用"}发送到话题功能', 'callback_data': f'0,{hashd},{InlineKeyBoardCallBack.EnableTopic.value}'})
+    d[i].append({'text': f'{"禁用" if config.add_author else "启用"}添加作者名', 'callback_data': f'0,{hashd},{InlineKeyBoardCallBack.AddAuthor.value}'})
     d.append([])
     i += 1
     d[i].append(
@@ -279,16 +282,18 @@ class main:
         if testMessage:
             text.addtotext('#测试消息')
         if config.show_RSS_title:
-            text.addtotext(f"<b>{meta['title']}</b>")
+            text.addtotext(f"<b>{escape(meta['title'])}</b>")
+        if  config.add_author and 'author' in content and content['author']:
+            text += f"<b>{escape(content['author'])}</b>"
         if config.show_Content_title and 'title' in content and content['title'] is not None and content['title'] != '':
             if 'link' in content and content['link'] is not None and content['link'] != '':
                 if not config.display_entry_link:
-                    text += f"""<b><a href="{content['link']}">{content['title']}</a></b>"""
+                    text += f"""<b><a href="{content['link']}">{escape(content['title'])}</a></b>"""
                 else:
-                    text += f"<b>{content['title']}</b>"
+                    text += f"<b>{escape(content['title'])}</b>"
                     text += f"""<a href="{content['link']}">{escape(content['link'])}</a>"""
             else:
-                text.addtotext(f"<b>{content['title']}</b>")
+                text.addtotext(f"<b>{escape(content['title'])}</b>")
         elif 'link' in content and content['link'] is not None and content['link'] != '':
             text.addtotext(
                 f"""<a href="{content['link']}">{escape(content['link'])}</a>""")
@@ -1832,7 +1837,7 @@ class callbackQueryHandle(Thread):
                 self._main._request("editMessageText", "post", json=di)
                 self.answer()
                 return
-            elif self._inlineKeyBoardCommand in [InlineKeyBoardCallBack.DisableWebPagePreview, InlineKeyBoardCallBack.ShowRSSTitle, InlineKeyBoardCallBack.ShowContentTitle, InlineKeyBoardCallBack.ShowContent, InlineKeyBoardCallBack.SendMedia, InlineKeyBoardCallBack.DisplayEntryLink, InlineKeyBoardCallBack.SendImgAsFile, InlineKeyBoardCallBack.SendUgoiraWithOriginPixFmt, InlineKeyBoardCallBack.SendUgoiraMethod, InlineKeyBoardCallBack.CompressBigImage]:
+            elif self._inlineKeyBoardCommand in [InlineKeyBoardCallBack.DisableWebPagePreview, InlineKeyBoardCallBack.ShowRSSTitle, InlineKeyBoardCallBack.ShowContentTitle, InlineKeyBoardCallBack.ShowContent, InlineKeyBoardCallBack.SendMedia, InlineKeyBoardCallBack.DisplayEntryLink, InlineKeyBoardCallBack.SendImgAsFile, InlineKeyBoardCallBack.SendUgoiraWithOriginPixFmt, InlineKeyBoardCallBack.SendUgoiraMethod, InlineKeyBoardCallBack.CompressBigImage, InlineKeyBoardCallBack.AddAuthor]:
                 if self._inlineKeyBoardCommand == InlineKeyBoardCallBack.DisableWebPagePreview:
                     self._rssMeta.config.disable_web_page_preview = not self._rssMeta.config.disable_web_page_preview
                 elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.ShowRSSTitle:
@@ -1853,6 +1858,8 @@ class callbackQueryHandle(Thread):
                     self._rssMeta.config.send_ugoira_method = SendUgoiraMethod(int(self._inputList[3]))
                 elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.CompressBigImage:
                     self._rssMeta.config.compress_big_image = not self._rssMeta.config.compress_big_image
+                elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.AddAuthor:
+                    self._rssMeta.config.add_author = not self._rssMeta.config.add_author
                 di = {'chat_id': self._rssMeta.chatId,
                       'message_id': self._rssMeta.messageId}
                 di['text'] = getMediaInfo(
@@ -2118,7 +2125,7 @@ class callbackQueryHandle(Thread):
                 self._main._request("editMessageText", "post", json=di)
                 self.answer()
                 return
-            elif self._inlineKeyBoardForRSSListCommand in [InlineKeyBoardForRSSList.DisableWebPagePreview, InlineKeyBoardForRSSList.ShowRSSTitle, InlineKeyBoardForRSSList.ShowContentTitle, InlineKeyBoardForRSSList.ShowContent, InlineKeyBoardForRSSList.SendMedia, InlineKeyBoardForRSSList.DisplayEntryLink, InlineKeyBoardForRSSList.SendImgAsFile, InlineKeyBoardForRSSList.SendUgoiraWithOriginPixFmt, InlineKeyBoardForRSSList.SendUgoiraMethod, InlineKeyBoardForRSSList.CompressBigImage]:
+            elif self._inlineKeyBoardForRSSListCommand in [InlineKeyBoardForRSSList.DisableWebPagePreview, InlineKeyBoardForRSSList.ShowRSSTitle, InlineKeyBoardForRSSList.ShowContentTitle, InlineKeyBoardForRSSList.ShowContent, InlineKeyBoardForRSSList.SendMedia, InlineKeyBoardForRSSList.DisplayEntryLink, InlineKeyBoardForRSSList.SendImgAsFile, InlineKeyBoardForRSSList.SendUgoiraWithOriginPixFmt, InlineKeyBoardForRSSList.SendUgoiraMethod, InlineKeyBoardForRSSList.CompressBigImage, InlineKeyBoardForRSSList.AddAuthor]:
                 di = {'chat_id': self._data['message']['chat']['id'],
                       'message_id': self._data['message']['message_id']}
                 rssList = self._main._db.getRSSListByChatId(chatId)
@@ -2151,6 +2158,8 @@ class callbackQueryHandle(Thread):
                     config.send_ugoira_method = SendUgoiraMethod(int(self._inputList[5]))
                 elif self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.CompressBigImage:
                     config.compress_big_image = not config.compress_big_image
+                elif self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.AddAuthor:
+                    config.add_author = not config.add_author
                 updated = self._main._db.updateChatConfig(chatEntry)
                 if updated:
                     self.answer('修改设置成功')

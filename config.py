@@ -79,10 +79,11 @@ class RSSConfig:
         self.send_ugoira_method = SendUgoiraMethod(0)
         self.compress_big_image = True
         self.thread_ids = MessageThreadIdList()
+        self.add_author = False
         self.update(d)
 
     def toJson(self):
-        return dumps({'disable_web_page_preview': self.disable_web_page_preview, 'show_RSS_title': self.show_RSS_title, 'show_Content_title': self.show_Content_title, 'show_content': self.show_content, 'send_media': self.send_media, 'display_entry_link': self.display_entry_link, 'send_img_as_file': self.send_img_as_file, 'send_ugoira_with_origin_pix_fmt': self.send_ugoira_with_origin_pix_fmt, 'send_ugoira_method': self.send_ugoira_method.value, "compress_big_image": self.compress_big_image, 'thread_ids': {'list': self.thread_ids._list, 'without_id': self.thread_ids._without_id}}, ensure_ascii=False)
+        return dumps({'disable_web_page_preview': self.disable_web_page_preview, 'show_RSS_title': self.show_RSS_title, 'show_Content_title': self.show_Content_title, 'show_content': self.show_content, 'send_media': self.send_media, 'display_entry_link': self.display_entry_link, 'send_img_as_file': self.send_img_as_file, 'send_ugoira_with_origin_pix_fmt': self.send_ugoira_with_origin_pix_fmt, 'send_ugoira_method': self.send_ugoira_method.value, "compress_big_image": self.compress_big_image, 'thread_ids': {'list': self.thread_ids._list, 'without_id': self.thread_ids._without_id}, 'add_author': self.add_author}, ensure_ascii=False)
 
     def update(self, d: dict):
         if d is not None:
