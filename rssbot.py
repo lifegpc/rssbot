@@ -100,6 +100,8 @@ def getMediaInfo(m: dict, config: RSSConfig = RSSConfig()) -> str:
     s += f"\n添加作者名：{config.add_author}"
     s += f"\nRSS全局设置："
     s += f"\n发送时使用原文件名：{config.send_origin_file_name}"
+    ttlt = '未设置' if config.interval is None else f"{config.interval}分"
+    s += f"\n更新间隔：{ttlt}"
     return s
 
 
@@ -129,6 +131,7 @@ class InlineKeyBoardCallBack(Enum):
     RemoveTopicFromList = 21
     DisableTopic = 22
     AddAuthor = 23
+    SetInterval = 24
 
 
 def getInlineKeyBoardWhenRSS(hashd: str, m: dict, isOwn: bool) -> dict:
@@ -218,6 +221,9 @@ def getInlineKeyBoardWhenRSS3(hashd: str, config: RSSConfig):
     i = 0
     temp = '禁用发送时使用原文件名' if config.send_origin_file_name else '启用发送时使用原文件名'
     d[i].append({'text': temp, 'callback_data': f'0,{hashd},{InlineKeyBoardCallBack.SendOriginFileName.value}'})
+    d.append([])
+    i += 1
+    d[i].append({'text': '设置更新间隔', 'callback_data': f'0,{hashd},{InlineKeyBoardCallBack.SetInterval.value}'})
     d.append([])
     i += 1
     d[i].append({'text': '返回', 'callback_data': f'0,{hashd},{InlineKeyBoardCallBack.BackToNormalPage.value}'})
@@ -1258,7 +1264,28 @@ class messageHandle(Thread):
                     return
             elif self._botCommand == '/empty' and self._userStatus == userStatus.needInputInterval:
                 hashd = self._hashd.split(',')
-                if hashd[0] == '1':
+                if hashd[0] == '0':
+                    metainfo = self._main._rssMetaList.getRSSMeta(hashd[1])
+                    if metainfo is None:
+                        self._main._db.setUserStatus(
+                            self._fromUserId, userStatus.normalStatus)
+                        di['text'] = '已过期。'
+                        self._main._request('sendMessage', 'post', json=di)
+                        return
+                    metainfo.config.interval = None
+                    di['text'] = '修改成功。'
+                    self._main._request('sendMessage', 'post', json=di)
+                    di2 = {'chat_id': metainfo.chatId, 'message_id': metainfo.messageId}
+                    di2['text'] = getMediaInfo(metainfo.meta, metainfo.config)
+                    di2['parse_mode'] = 'HTML'
+                    di2['link_preview_options'] = { 'is_disabled': True }
+                    di2['reply_markup'] = getInlineKeyBoardWhenRSS4(
+                        hashd[1], metainfo.config)
+                    self._main._request("editMessageText", "post", json=di2)
+                    self._main._db.setUserStatus(
+                        self._fromUserId, userStatus.normalStatus)
+                    return
+                elif hashd[0] == '1':
                     chatId = int(hashd[1])
                     messageId = int(hashd[2])
                     ind = int(hashd[3])
@@ -1489,7 +1516,38 @@ class messageHandle(Thread):
                     return
             elif self._userStatus == userStatus.needInputInterval:
                 hashd = self._hashd.split(',')
-                if hashd[0] == '1':
+                if hashd[0] == '0':
+                    metainfo = self._main._rssMetaList.getRSSMeta(hashd[1])
+                    if metainfo is None:
+                        self._main._db.setUserStatus(
+                            self._fromUserId, userStatus.normalStatus)
+                        di['text'] = '已过期。'
+                        self._main._request('sendMessage', 'post', json=di)
+                        return
+                    para = self._getCommandlinePara()
+                    interval = None
+                    for i in para:
+                        if search(r'^[\+-]?[0-9]+$', i) is not None:
+                            interval = int(i)
+                            break
+                    if interval is None:
+                        di['text'] = '找不到更新间隔。'
+                        self._main._request('sendMessage', 'post', json=di)
+                        return
+                    metainfo.config.interval = interval
+                    di['text'] = '修改成功。'
+                    self._main._request('sendMessage', 'post', json=di)
+                    di2 = {'chat_id': metainfo.chatId, 'message_id': metainfo.messageId}
+                    di2['text'] = getMediaInfo(metainfo.meta, metainfo.config)
+                    di2['parse_mode'] = 'HTML'
+                    di2['link_preview_options'] = { 'is_disabled': True }
+                    di2['reply_markup'] = getInlineKeyBoardWhenRSS4(
+                        hashd[1], metainfo.config)
+                    self._main._request("editMessageText", "post", json=di2)
+                    self._main._db.setUserStatus(
+                        self._fromUserId, userStatus.normalStatus)
+                    return
+                elif hashd[0] == '1':
                     chatId = int(hashd[1])
                     messageId = int(hashd[2])
                     ind = int(hashd[3])
@@ -2056,6 +2114,19 @@ class callbackQueryHandle(Thread):
                 di['reply_markup'] = getInlineKeyBoardWhenRSS3(
                     self._hashd, self._rssMeta.config)
                 self._main._request("editMessageText", "post", json=di)
+                self.answer()
+                return
+            elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.SetInterval:
+                di = {}
+                self._main._db.setUserStatus(self._fromUserId, userStatus.needInputInterval, f'0,{self.hashd}')
+                if 'message' in self._data and self._data['message'] is not None:
+                    di['chat_id'] = self._data['message']['chat']['id']
+                else:
+                    di['chat_id'] = self._data['from']['id']
+                if self._messageThreadId is not None:
+                    di['message_thread_id'] = self._messageThreadId
+                di["text"] = "请输入更新间隔（使用 /cancel 可以取消，使用 /empty 可以清空当前设置）："
+                self._main._request("sendMessage", "post", json=di)
                 self.answer()
                 return
         elif self._loc == 1:

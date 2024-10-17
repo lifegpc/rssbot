@@ -287,7 +287,7 @@ def getInlineKeyBoardForRSSGlobalSettingsInList(chatId: int, rssEntry: RSSEntry,
         d[i].append({'text': temp, 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.SendOriginFileName.value},{index},{rssEntry.id}'})
         d.append([])
         i += 1
-        d[i].append({'text': '设置间隔时间', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.SetInterval.value},{index},{rssEntry.id}'})
+        d[i].append({'text': '设置更新间隔', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.SetInterval.value},{index},{rssEntry.id}'})
     d.append([])
     i += 1
     d[i].append({'text': '返回', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.BackToContentPage.value},{index},{rssEntry.id}'})
