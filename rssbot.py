@@ -2118,7 +2118,7 @@ class callbackQueryHandle(Thread):
                 return
             elif self._inlineKeyBoardCommand == InlineKeyBoardCallBack.SetInterval:
                 di = {}
-                self._main._db.setUserStatus(self._fromUserId, userStatus.needInputInterval, f'0,{self.hashd}')
+                self._main._db.setUserStatus(self._fromUserId, userStatus.needInputInterval, f'0,{self._hashd}')
                 if 'message' in self._data and self._data['message'] is not None:
                     di['chat_id'] = self._data['message']['chat']['id']
                 else:
