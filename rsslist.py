@@ -56,6 +56,7 @@ class InlineKeyBoardForRSSList(Enum):
     RemoveTopicFromList = 28
     DisableTopic = 29
     AddAuthor = 30
+    SetInterval = 31
 
 
 def getTextContentForRSSInList(rssEntry: RSSEntry, s: settings) -> str:
@@ -101,6 +102,8 @@ def getTextContentForRSSInList(rssEntry: RSSEntry, s: settings) -> str:
         text += f"添加作者名：{config.add_author}"
         text += f"RSS全局设置："
         text += f"发送时使用原文件名：{config.send_origin_file_name}"
+        ttlt = '未设置' if config.interval is None else f"{config.interval}分"
+        text += f"更新间隔：{ttlt}"
     return text.tostr()
 
 
@@ -282,6 +285,9 @@ def getInlineKeyBoardForRSSGlobalSettingsInList(chatId: int, rssEntry: RSSEntry,
         d.append([])
         i += 1
         d[i].append({'text': temp, 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.SendOriginFileName.value},{index},{rssEntry.id}'})
+        d.append([])
+        i += 1
+        d[i].append({'text': '设置间隔时间', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.SetInterval.value},{index},{rssEntry.id}'})
     d.append([])
     i += 1
     d[i].append({'text': '返回', 'callback_data': f'1,{chatId},{InlineKeyBoardForRSSList.BackToContentPage.value},{index},{rssEntry.id}'})

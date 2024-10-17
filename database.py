@@ -82,6 +82,7 @@ class userStatus(Enum):
     needInputChatId = 1
     needInputThreadId = 2
     needRemoveThreadId = 3
+    needInputInterval = 4
 
 
 class database:

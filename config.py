@@ -80,6 +80,7 @@ class RSSConfig:
         self.compress_big_image = True
         self.thread_ids = MessageThreadIdList()
         self.add_author = False
+        self.interval = None
         self.update(d)
 
     def toJson(self):
@@ -98,4 +99,4 @@ class RSSConfig:
                         setattr(self, k, d[k])
 
     def toGlobalJson(self):
-        return dumps({'send_origin_file_name': self.send_origin_file_name}, ensure_ascii=False)
+        return dumps({'send_origin_file_name': self.send_origin_file_name, 'interval': self.interval}, ensure_ascii=False)

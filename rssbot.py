@@ -1160,13 +1160,15 @@ class messageHandle(Thread):
                 self._fromUserId)
             if self._userStatus == userStatus.normalStatus:
                 pass
-            elif self._botCommand is not None and self._botCommand == '/cancle':
+            elif self._botCommand is not None and self._botCommand == '/cancel':
                 if self._userStatus == userStatus.needInputChatId:
                     di['text'] = '已取消输入群/频道ID。'
                 elif self._userStatus == userStatus.needInputThreadId:
                     di['text'] = '已取消新增话题ID。'
                 elif self._userStatus == userStatus.needRemoveThreadId:
                     di['text'] = '已取消移除话题ID。'
+                elif self._userStatus == userStatus.needInputInterval:
+                    di['text'] = '已取消修改更新间隔。'
                 self._main._db.setUserStatus(
                     self._fromUserId, userStatus.normalStatus)
                 self._main._request('sendMessage', 'post', json=di)
@@ -1253,6 +1255,42 @@ class messageHandle(Thread):
                     self._main._request("editMessageText", "post", json=di2)
                     self._main._db.setUserStatus(
                         self._fromUserId, userStatus.normalStatus)
+                    return
+            elif self._botCommand == '/empty' and self._userStatus == userStatus.needInputInterval:
+                hashd = self._hashd.split(',')
+                if hashd[0] == '1':
+                    chatId = int(hashd[1])
+                    messageId = int(hashd[2])
+                    ind = int(hashd[3])
+                    rssId = int(hashd[4])
+                    try:
+                        fromChatId = int(hashd[5])
+                    except Exception:
+                        fromChatId = chatId
+                    rssEntry = self._main._db.getRSSByIdAndChatId(rssId, chatId)
+                    if rssEntry is None:
+                        self._main._db.setUserStatus(
+                            self._fromUserId, userStatus.normalStatus)
+                        di['text'] = '找不到RSS。'
+                        self._main._request('sendMessage', 'post', json=di)
+                        return
+                    chatEntry: ChatEntry = rssEntry.chatList[0]
+                    chatEntry.config.interval = None
+                    updated = self._main._db.updateRSSSettings(rssEntry.id, chatEntry.config)
+                    di['text'] = f'修改设置{"成功" if updated else "失败"}。'
+                    self._main._db.setUserStatus(self._fromUserId, userStatus.normalStatus)
+                    self._main._request('sendMessage', 'post', json=di)
+                    rssEntry = self._main._db.getRSSByIdAndChatId(rssId, chatId)
+                    if rssEntry is None:
+                        di['text'] = '找不到RSS。'
+                        self._main._request('sendMessage', 'post', json=di)
+                        return
+                    di2 = {'chat_id': fromChatId, 'message_id': messageId}
+                    di2['text'] = getTextContentForRSSInList(rssEntry, self._main._setting)
+                    di2['parse_mode'] = 'HTML'
+                    di2['reply_markup'] = getInlineKeyBoardForRSSGlobalSettingsInList(
+                        chatId, rssEntry, ind)
+                    self._main._request("editMessageText", "post", json=di2)
                     return
             elif self._userStatus in [userStatus.needInputChatId]:
                 metainfo = self._main._rssMetaList.getRSSMeta(self._hashd)
@@ -1448,6 +1486,52 @@ class messageHandle(Thread):
                     self._main._request("editMessageText", "post", json=di2)
                     self._main._db.setUserStatus(
                         self._fromUserId, userStatus.normalStatus)
+                    return
+            elif self._userStatus == userStatus.needInputInterval:
+                hashd = self._hashd.split(',')
+                if hashd[0] == '1':
+                    chatId = int(hashd[1])
+                    messageId = int(hashd[2])
+                    ind = int(hashd[3])
+                    rssId = int(hashd[4])
+                    try:
+                        fromChatId = int(hashd[5])
+                    except Exception:
+                        fromChatId = chatId
+                    rssEntry = self._main._db.getRSSByIdAndChatId(rssId, chatId)
+                    if rssEntry is None:
+                        self._main._db.setUserStatus(
+                            self._fromUserId, userStatus.normalStatus)
+                        di['text'] = '找不到RSS。'
+                        self._main._request('sendMessage', 'post', json=di)
+                        return
+                    chatEntry: ChatEntry = rssEntry.chatList[0]
+                    para = self._getCommandlinePara()
+                    interval = None
+                    for i in para:
+                        if search(r'^[\+-]?[0-9]+$', i) is not None:
+                            interval = int(i)
+                            break
+                    if interval is None:
+                        di['text'] = '找不到更新间隔。'
+                        self._main._request('sendMessage', 'post', json=di)
+                        return
+                    chatEntry.config.interval = interval
+                    updated = self._main._db.updateRSSSettings(rssEntry.id, chatEntry.config)
+                    di['text'] = f'修改设置{"成功" if updated else "失败"}。'
+                    self._main._db.setUserStatus(self._fromUserId, userStatus.normalStatus)
+                    self._main._request('sendMessage', 'post', json=di)
+                    rssEntry = self._main._db.getRSSByIdAndChatId(rssId, chatId)
+                    if rssEntry is None:
+                        di['text'] = '找不到RSS。'
+                        self._main._request('sendMessage', 'post', json=di)
+                        return
+                    di2 = {'chat_id': fromChatId, 'message_id': messageId}
+                    di2['text'] = getTextContentForRSSInList(rssEntry, self._main._setting)
+                    di2['parse_mode'] = 'HTML'
+                    di2['reply_markup'] = getInlineKeyBoardForRSSGlobalSettingsInList(
+                        chatId, rssEntry, ind)
+                    self._main._request("editMessageText", "post", json=di2)
                     return
         if self._botCommand is None and self._data['chat']['type'] in ['group', 'supergroup']:
             return
@@ -1794,7 +1878,7 @@ class callbackQueryHandle(Thread):
                     di['chat_id'] = self._data['from']['id']
                 if self._messageThreadId is not None:
                     di['message_thread_id'] = self._messageThreadId
-                di["text"] = "请输入群/频道的ID（使用 /cancle 可以取消）："
+                di["text"] = "请输入群/频道的ID（使用 /cancel 可以取消）："
                 self._main._request("sendMessage", "post", json=di)
                 self.answer()
                 return
@@ -1915,9 +1999,9 @@ class callbackQueryHandle(Thread):
                 if self._messageThreadId is not None:
                     di['message_thread_id'] = self._messageThreadId
                 if added:
-                    di["text"] = "请在话题内发送 /this 给机器人以添加相应话题（使用 /cancle 可以取消）："
+                    di["text"] = "请在话题内发送 /this 给机器人以添加相应话题（使用 /cancel 可以取消）："
                 else:
-                    di['text'] = "请在话题内发送 /this 给机器人以移除相应话题或者输入话题ID（使用 /cancle 可以取消）："
+                    di['text'] = "请在话题内发送 /this 给机器人以移除相应话题或者输入话题ID（使用 /cancel 可以取消）："
                 self._main._request("sendMessage", "post", json=di)
                 self.answer()
                 return
@@ -2176,31 +2260,6 @@ class callbackQueryHandle(Thread):
                     chatId, rss, ind)
                 self._main._request("editMessageText", "post", json=di)
                 return
-            elif self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.ForceUpdate:
-                di = {'chat_id': self._data['message']['chat']['id'],
-                      'message_id': self._data['message']['message_id']}
-                ind = int(self._inputList[3])
-                ind = max(ind, 0)
-                rssId = int(self._inputList[4])
-                rss = self._main._db.getRSSByIdAndChatId(rssId, chatId)
-                if rss is None:
-                    self.answer('找不到该RSS。')
-                    return
-                if self._main._db.setRSSForceUpdate(rss.id, True):
-                    self.answer('已发送强制更新请求。')
-                else:
-                    self.answer('发送强制更新请求失败。')
-                rss = self._main._db.getRSSByIdAndChatId(rssId, chatId)
-                if rss is None:
-                    self.answer('找不到该RSS。')
-                    return
-                di['text'] = getTextContentForRSSInList(
-                    rss, self._main._setting)
-                di['parse_mode'] = 'HTML'
-                di['reply_markup'] = getInlineKeyBoardForRSSInList(
-                    chatId, rss, ind, self._main._setting.botOwnerList.isOwner(self._fromUserId))
-                self._main._request("editMessageText", "post", json=di)
-                return
             elif self._inlineKeyBoardForRSSListCommand in [InlineKeyBoardForRSSList.EnableTopic, InlineKeyBoardForRSSList.EnableSendWithoutTopicId]:
                 di = {'chat_id': self._data['message']['chat']['id'],
                       'message_id': self._data['message']['message_id']}
@@ -2274,16 +2333,41 @@ class callbackQueryHandle(Thread):
                 if self._messageThreadId is not None:
                     di['message_thread_id'] = self._messageThreadId
                 if added:
-                    di["text"] = "请在话题内发送 /this 给机器人以添加相应话题（使用 /cancle 可以取消）："
+                    di["text"] = "请在话题内发送 /this 给机器人以添加相应话题（使用 /cancel 可以取消）："
                 else:
-                    di['text'] = "请在话题内发送 /this 给机器人以移除相应话题或者输入话题ID（使用 /cancle 可以取消）："
+                    di['text'] = "请在话题内发送 /this 给机器人以移除相应话题或者输入话题ID（使用 /cancel 可以取消）："
                 self._main._request("sendMessage", "post", json=di)
                 self.answer()
                 return
             if not self._isOwn:
                 self.answer('❌你没有权限操作，请与Bot主人进行PY交易以获得权限。')
                 return
-            if self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.GlobalSettingsPage:
+            if self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.ForceUpdate:
+                di = {'chat_id': self._data['message']['chat']['id'],
+                      'message_id': self._data['message']['message_id']}
+                ind = int(self._inputList[3])
+                ind = max(ind, 0)
+                rssId = int(self._inputList[4])
+                rss = self._main._db.getRSSByIdAndChatId(rssId, chatId)
+                if rss is None:
+                    self.answer('找不到该RSS。')
+                    return
+                if self._main._db.setRSSForceUpdate(rss.id, True):
+                    self.answer('已发送强制更新请求。')
+                else:
+                    self.answer('发送强制更新请求失败。')
+                rss = self._main._db.getRSSByIdAndChatId(rssId, chatId)
+                if rss is None:
+                    self.answer('找不到该RSS。')
+                    return
+                di['text'] = getTextContentForRSSInList(
+                    rss, self._main._setting)
+                di['parse_mode'] = 'HTML'
+                di['reply_markup'] = getInlineKeyBoardForRSSInList(
+                    chatId, rss, ind, self._main._setting.botOwnerList.isOwner(self._fromUserId))
+                self._main._request("editMessageText", "post", json=di)
+                return
+            elif self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.GlobalSettingsPage:
                 di = {'chat_id': self._data['message']['chat']['id'],
                       'message_id': self._data['message']['message_id']}
                 ind = int(self._inputList[3])
@@ -2328,6 +2412,27 @@ class callbackQueryHandle(Thread):
                 di['parse_mode'] = 'HTML'
                 di['reply_markup'] = getInlineKeyBoardForRSSGlobalSettingsInList(chatId, rss, ind)
                 self._main._request("editMessageText", "post", json=di)
+                return
+            elif self._inlineKeyBoardForRSSListCommand == InlineKeyBoardForRSSList.SetInterval:
+                di = {}
+                rssList = self._main._db.getRSSListByChatId(chatId)
+                ind = int(self._inputList[3])
+                ind = max(ind, 0)
+                rssId = int(self._inputList[4])
+                rssEntry = self._main._db.getRSSByIdAndChatId(rssId, chatId)
+                if rssEntry is None:
+                    self.answer('找不到该RSS。')
+                    return
+                self._main._db.setUserStatus(self._fromUserId, userStatus.needInputInterval, f'1,{chatId},{self._messageId},{ind},{rssId},{self._fromChatId}')
+                if 'message' in self._data and self._data['message'] is not None:
+                    di['chat_id'] = self._data['message']['chat']['id']
+                else:
+                    di['chat_id'] = self._data['from']['id']
+                if self._messageThreadId is not None:
+                    di['message_thread_id'] = self._messageThreadId
+                di["text"] = "请输入更新间隔（使用 /cancel 可以取消，使用 /empty 可以清空当前设置）："
+                self._main._request("sendMessage", "post", json=di)
+                self.answer()
                 return
         elif self._loc == 2:
             if self._fromUserId is None or not self._isOwn:

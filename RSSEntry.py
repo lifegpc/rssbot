@@ -206,6 +206,8 @@ class RSSEntry:
     def interval(self) -> int:
         if self._interval is None:
             return None
+        if 'interval' in self._settings and isinstance(self._settings['interval'], int):
+            return self._settings['interval']
         if isinstance(self._interval, int):
             return self._interval
         else:
