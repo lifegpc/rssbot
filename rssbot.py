@@ -1279,7 +1279,7 @@ class messageHandle(Thread):
                     di2['text'] = getMediaInfo(metainfo.meta, metainfo.config)
                     di2['parse_mode'] = 'HTML'
                     di2['link_preview_options'] = { 'is_disabled': True }
-                    di2['reply_markup'] = getInlineKeyBoardWhenRSS4(
+                    di2['reply_markup'] = getInlineKeyBoardWhenRSS3(
                         hashd[1], metainfo.config)
                     self._main._request("editMessageText", "post", json=di2)
                     self._main._db.setUserStatus(
@@ -1541,7 +1541,7 @@ class messageHandle(Thread):
                     di2['text'] = getMediaInfo(metainfo.meta, metainfo.config)
                     di2['parse_mode'] = 'HTML'
                     di2['link_preview_options'] = { 'is_disabled': True }
-                    di2['reply_markup'] = getInlineKeyBoardWhenRSS4(
+                    di2['reply_markup'] = getInlineKeyBoardWhenRSS3(
                         hashd[1], metainfo.config)
                     self._main._request("editMessageText", "post", json=di2)
                     self._main._db.setUserStatus(
